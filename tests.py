@@ -31,12 +31,35 @@ def teardown():
 
 
 def test_hello():
-    app = natrix.simple_app
+    # empty route
+    app = natrix.wsgi_app()
     testapp = webtest.TestApp(app)
-    response = testapp.get("/")
 
+    response = testapp.get("/")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "It works!")
+    eq(response.content_type, "text/plain")
+
+    # basic routing
+    app = natrix.wsgi_app([
+        ("/hello", "Hello world!"),
+        ("/lorem", "Lorem ipsum"),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "It works!")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/hello")
     eq(response.status_int, 200)
     eq(response.normal_body, "Hello world!")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/lorem")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "Lorem ipsum")
     eq(response.content_type, "text/plain")
 
 
