@@ -21,11 +21,10 @@ class Response(object):
         return [("Content-Type", "text/plain")]
 
 
-def make_app(routes=None, debug=False, config=None):
+def make_app(routes=None, config=None):
     """ Generate the WSGI application function
 
         routes - Route tuples `(regex, view)`
-        debug  - True to enable debug mode, False otherwise
         config - A configuration dictionary for the application
 
         Returns WSGI app function

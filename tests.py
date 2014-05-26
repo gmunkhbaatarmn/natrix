@@ -71,7 +71,7 @@ def test_hello():
     app = natrix.wsgi_app([
         ("/hello", ["Hello world!"]),
         ("/lorem", ["Lorem ipsum"]),
-    ])
+    ], {})
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/")
