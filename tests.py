@@ -5,9 +5,6 @@ from nose.tools import eq_ as eq
 from google.appengine.ext.testbed import Testbed
 
 
-testbed = None
-
-
 def setup():
     global testbed
 
@@ -30,6 +27,36 @@ def teardown():
     testbed.deactivate()
 
 
+def test_Request():
+    environ = {
+        "PATH_INFO": "/",
+        "REQUEST_METHOD": "GET",
+        # "HTTP_HOST": "localhost:80",
+        # "QUERY_STRING": "",
+        # "SERVER_NAME": "localhost",
+        # "SERVER_PORT": 80,
+        # "SERVER_PROTOCOL": "HTTP/1.0",
+        # "wsgi.url_scheme": "http",
+    }
+    request = natrix.Request(environ)
+    eq(request.method, "get")
+    eq(request.path, "/")
+
+    # more cases
+    environ["PATH_INFO"] = "/test"
+    environ["REQUEST_METHOD"] = "POST"
+    request = natrix.Request(environ)
+    eq(request.method, "post")
+    eq(request.path, "/test")
+
+
+def test_Response():
+    response = natrix.Response()
+    eq(response.status_code, 200)
+    eq(response.status, "200 OK")
+    eq(response.headers, [("Content-Type", "text/plain")])
+
+
 def test_hello():
     # empty route
     app = natrix.wsgi_app()
@@ -42,8 +69,8 @@ def test_hello():
 
     # basic routing
     app = natrix.wsgi_app([
-        ("/hello", "Hello world!"),
-        ("/lorem", "Lorem ipsum"),
+        ("/hello", ["Hello world!"]),
+        ("/lorem", ["Lorem ipsum"]),
     ])
     testapp = webtest.TestApp(app)
 
@@ -64,4 +91,5 @@ def test_hello():
 
 
 if __name__ == "__main__":
+    testbed = None
     nose.main(defaultTest=__file__)
