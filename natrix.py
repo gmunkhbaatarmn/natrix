@@ -8,7 +8,7 @@ class Request(object):
 class Response(object):
     " Abstraction for an HTTP Response "
     def __init__(self):
-        self.status_code = 200
+        self.status = 200
         self.body = ""
 
         # Default headers
@@ -21,9 +21,9 @@ class Response(object):
         self.body += text
 
     @property
-    def status(self):
+    def status_full(self):
         # todo: status messages for status code
-        return "%s OK" % self.status_code
+        return "%s OK" % self.status
 
 
 def _make_app(routes=None, config=None):
@@ -58,7 +58,7 @@ def _make_app(routes=None, config=None):
             if isinstance(handler, list):
                 response.body = handler[0]
                 if len(handler) > 1:
-                    response.status_code = handler[1]
+                    response.status = handler[1]
                 if len(handler) > 2:
                     response.headers["Content-Type"] = handler[2]
 
@@ -75,7 +75,7 @@ def _make_app(routes=None, config=None):
         else:
             response.body = "It works!"
 
-        start_response(response.status, response.headers.items())
+        start_response(response.status_full, response.headers.items())
 
         return [response.body]
 

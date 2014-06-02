@@ -52,8 +52,8 @@ def test_Request():
 
 def test_Response():
     response = natrix.Response()
-    eq(response.status_code, 200)
-    eq(response.status, "200 OK")
+    eq(response.status, 200)
+    eq(response.status_full, "200 OK")
     eq(response.headers, {"Content-Type": "text/plain"})
 
 
@@ -108,6 +108,7 @@ def test_wsgi_app():
 
     # function handler
     def ok3(self):
+        self.response.status_code = ""
         self.response("OK3")
 
     def ok4(x):
