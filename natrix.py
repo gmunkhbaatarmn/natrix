@@ -1,14 +1,12 @@
 class Request(object):
-    """ Abstraction for an HTTP request
-    """
+    " Abstraction for an HTTP request "
     def __init__(self, environ):
         self.method = environ["REQUEST_METHOD"].lower()
         self.path = environ["PATH_INFO"]
 
 
 class Response(object):
-    """ Abstraction for an HTTP Response
-    """
+    " Abstraction for an HTTP Response "
     def __init__(self):
         self.status_code = 200
 
@@ -21,7 +19,7 @@ class Response(object):
         return [("Content-Type", "text/plain")]
 
 
-def make_app(routes=None, config=None):
+def _make_app(routes=None, config=None):
     """ Generate the WSGI application function
 
         routes - Route tuples `(regex, view)`
@@ -56,4 +54,4 @@ def make_app(routes=None, config=None):
     return app
 
 
-wsgi_app = make_app  # alias
+wsgi_app = _make_app  # alias
