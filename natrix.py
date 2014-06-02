@@ -13,7 +13,10 @@ class Handler(object):
     def render_string(self, template, **kwargs):
         env = Environment(loader=FileSystemLoader("./templates"))
 
-        return env.get_template(template).render(kwargs.copy())
+        context = kwargs.copy()
+        context["request"] = self.request
+
+        return env.get_template(template).render(context)
 
 
 class Request(object):
