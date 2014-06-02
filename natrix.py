@@ -1,3 +1,21 @@
+from jinja2 import Environment, FileSystemLoader
+
+
+class Handler(object):
+    def __init__(self, request, response):
+        self.request = request
+        self.response = response
+
+    def render(self, template, **kwargs):
+        self.response.headers["Content-Type"] = "text/html"
+        self.response.write(self.render_string(template, **kwargs))
+
+    def render_string(self, template, **kwargs):
+        env = Environment(loader=FileSystemLoader("./templates"))
+
+        return env.get_template(template).render(kwargs.copy())
+
+
 class Request(object):
     " Abstraction for an HTTP request "
     def __init__(self, environ):
@@ -17,7 +35,13 @@ class Response(object):
         }
 
     def __call__(self, text):
-        " Shortcut method "
+        " Shortcut method of self.write() "
+        self.write(text)
+
+    def write(self, text):
+        if not isinstance(text, str):
+            text = text.encode("utf-8")
+
         self.body += text
 
     @property
@@ -64,10 +88,6 @@ def _make_app(routes=None, config=None):
 
             # Function handler
             if hasattr(handler, "__call__"):
-                class Handler(object):
-                    def __init__(self, request, response):
-                        self.request = request
-                        self.response = response
                 _self = Handler(request, response)
 
                 handler(_self)

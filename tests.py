@@ -1,3 +1,4 @@
+# coding: utf-8
 import nose
 import natrix
 import webtest
@@ -141,6 +142,27 @@ def test_wsgi_app():
     response = testapp.get("/ok4")
     eq(response.status_int, 202)
     eq(response.normal_body, "OK4")
+    eq(response.content_type, "text/plain")
+
+
+def test_Handler():
+    def ok2(x):
+        x.response(x.render_string("ok.html"))
+
+    app = natrix.wsgi_app([
+        ("/ok", lambda self: self.render("ok.html")),
+        ("/ok2", ok2),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/html")
+
+    response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
     eq(response.content_type, "text/plain")
 
 
