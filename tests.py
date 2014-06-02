@@ -54,10 +54,10 @@ def test_Response():
     response = natrix.Response()
     eq(response.status_code, 200)
     eq(response.status, "200 OK")
-    eq(response.headers, [("Content-Type", "text/plain")])
+    eq(response.headers, {"Content-Type": "text/plain"})
 
 
-def test_hello():
+def test_wsgi_app():
     # empty route
     app = natrix.wsgi_app()
     testapp = webtest.TestApp(app)
@@ -71,7 +71,7 @@ def test_hello():
     app = natrix.wsgi_app([
         ("/hello", ["Hello world!"]),
         ("/lorem", ["Lorem ipsum"]),
-    ], {})
+    ])
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/")
@@ -88,6 +88,23 @@ def test_hello():
     eq(response.status_int, 200)
     eq(response.normal_body, "Lorem ipsum")
     eq(response.content_type, "text/plain")
+
+    # list handler complicated
+    app = natrix.wsgi_app([
+        ("/status", ["Hello world!", 201]),
+        ("/content_type", ["[1, 2]", 202, "application/json"]),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/status")
+    eq(response.status_int, 201)
+    eq(response.normal_body, "Hello world!")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/content_type")
+    eq(response.status_int, 202)
+    eq(response.normal_body, "[1, 2]")
+    eq(response.content_type, "application/json")
 
 
 if __name__ == "__main__":

@@ -9,14 +9,17 @@ class Response(object):
     " Abstraction for an HTTP Response "
     def __init__(self):
         self.status_code = 200
+        self.body = ""
+
+        # Default headers
+        self.headers = {
+            "Content-Type": "text/plain",
+        }
 
     @property
     def status(self):
+        # todo: status messages for status code
         return "%s OK" % self.status_code
-
-    @property
-    def headers(self):
-        return [("Content-Type", "text/plain")]
 
 
 def _make_app(routes=None, config=None):
@@ -28,6 +31,7 @@ def _make_app(routes=None, config=None):
         Returns WSGI app function
     """
     routes = routes or []  # none to list
+    config = config or {}  # none to dict
 
     def app(environ, start_response):
         """ Called by WSGI when a request comes in
@@ -42,14 +46,23 @@ def _make_app(routes=None, config=None):
         request = Request(environ)
         response = Response()
 
-        start_response(response.status, response.headers)
-
         if request.path in dict(routes):
-            response_body = dict(routes)[request.path][0]
-        else:
-            response_body = "It works!"
+            handler = dict(routes)[request.path]
 
-        return [response_body]
+            # Simple string handler. Format:
+            # [<Response body>, <Status code>, <Content-Type>]
+            if isinstance(handler, list):
+                response.body = handler[0]
+                if len(handler) > 1:
+                    response.status_code = handler[1]
+                if len(handler) > 2:
+                    response.headers["Content-Type"] = handler[2]
+        else:
+            response.body = "It works!"
+
+        start_response(response.status, response.headers.items())
+
+        return [response.body]
 
     return app
 
