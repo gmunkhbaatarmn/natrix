@@ -2,7 +2,7 @@
 import nose
 import natrix
 import webtest
-from nose.tools import eq_ as eq
+from nose.tools import eq_ as eq, ok_ as ok
 from google.appengine.ext.testbed import Testbed
 
 
@@ -223,6 +223,11 @@ def test_Handler():
     eq(response.status_int, 200)
     eq(response.normal_body, "<b>ok хорошо!</b>")
     eq(response.content_type, "text/plain")
+
+
+def test_google_appengine_shortcuts():
+    ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))
+    ok(str(natrix.memcache)[9:].startswith("google.appengine.api.memcache"))
 
 
 if __name__ == "__main__":

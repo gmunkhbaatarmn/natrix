@@ -1,4 +1,9 @@
 from jinja2 import Environment, FileSystemLoader
+from google.appengine.api import memcache
+from google.appengine.ext import db
+
+
+__all__ = ["db", "memcache"]
 
 
 class Handler(object):
