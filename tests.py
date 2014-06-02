@@ -108,10 +108,11 @@ def test_wsgi_app():
 
     # function handler
     def ok3(self):
-        self.response.status_code = ""
+        self.response.status = 201
         self.response("OK3")
 
     def ok4(x):
+        x.response.status = "202"
         x.response("OK4")
 
     app = natrix.wsgi_app([
@@ -133,12 +134,12 @@ def test_wsgi_app():
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/ok3")
-    eq(response.status_int, 200)
+    eq(response.status_int, 201)
     eq(response.normal_body, "OK3")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/ok4")
-    eq(response.status_int, 200)
+    eq(response.status_int, 202)
     eq(response.normal_body, "OK4")
     eq(response.content_type, "text/plain")
 
