@@ -149,10 +149,39 @@ def test_Handler():
     def ok2(x):
         x.response(x.render_string("ok.html"))
 
+    def ok3(x):
+        x.response(x.render_string("ok.html", hello="!"))
+
     app = natrix.wsgi_app([
         ("/ok", lambda self: self.render("ok.html")),
         ("/ok2", ok2),
+        ("/ok3", ok3),
     ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.content_type, "text/html")
+
+    response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok3")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+    # default context
+    app = natrix.wsgi_app([
+        ("/ok", lambda self: self.render("ok.html")),
+        ("/ok2", ok2),
+        ("/ok3", ok3),
+    ], {
+        "context": {"hello": "!"},
+    })
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
@@ -161,6 +190,36 @@ def test_Handler():
     eq(response.content_type, "text/html")
 
     response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok3")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+    # default context as function
+    app = natrix.wsgi_app([
+        ("/ok", lambda self: self.render("ok.html")),
+        ("/ok2", ok2),
+        ("/ok3", ok3),
+    ], {
+        "context": lambda self: {"hello": "!"},
+    })
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/html")
+
+    response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok3")
     eq(response.status_int, 200)
     eq(response.normal_body, "<b>ok хорошо!</b>")
     eq(response.content_type, "text/plain")

@@ -2,9 +2,15 @@ from jinja2 import Environment, FileSystemLoader
 
 
 class Handler(object):
-    def __init__(self, request, response):
+    def __init__(self, request, response, config):
         self.request = request
         self.response = response
+        self.config = config
+
+        # Config default values
+        config["context"] = config.get("context", {})
+        if hasattr(config["context"], "__call__"):
+            config["context"] = config["context"](self)
 
     def render(self, template, **kwargs):
         self.response.headers["Content-Type"] = "text/html"
@@ -15,6 +21,7 @@ class Handler(object):
 
         context = kwargs.copy()
         context["request"] = self.request
+        context.update(self.config["context"])
 
         return env.get_template(template).render(context)
 
@@ -91,7 +98,7 @@ def _make_app(routes=None, config=None):
 
             # Function handler
             if hasattr(handler, "__call__"):
-                _self = Handler(request, response)
+                _self = Handler(request, response, config)
 
                 handler(_self)
                 response = _self.response
