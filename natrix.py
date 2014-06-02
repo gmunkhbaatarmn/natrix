@@ -16,6 +16,10 @@ class Response(object):
             "Content-Type": "text/plain",
         }
 
+    def __call__(self, text):
+        " Shortcut method "
+        self.body += text
+
     @property
     def status(self):
         # todo: status messages for status code
@@ -57,6 +61,17 @@ def _make_app(routes=None, config=None):
                     response.status_code = handler[1]
                 if len(handler) > 2:
                     response.headers["Content-Type"] = handler[2]
+
+            # Function handler
+            if hasattr(handler, "__call__"):
+                class Handler(object):
+                    def __init__(self, request, response):
+                        self.request = request
+                        self.response = response
+                _self = Handler(request, response)
+
+                handler(_self)
+                response = _self.response
         else:
             response.body = "It works!"
 

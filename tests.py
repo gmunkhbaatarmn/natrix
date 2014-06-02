@@ -106,6 +106,41 @@ def test_wsgi_app():
     eq(response.normal_body, "[1, 2]")
     eq(response.content_type, "application/json")
 
+    # function handler
+    def ok3(self):
+        self.response("OK3")
+
+    def ok4(x):
+        x.response("OK4")
+
+    app = natrix.wsgi_app([
+        ("/ok", lambda self: self.response("OK")),
+        ("/ok2", lambda x: x.response("OK2")),
+        ("/ok3", ok3),
+        ("/ok4", ok4),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "OK")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "OK2")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok3")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "OK3")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok4")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "OK4")
+    eq(response.content_type, "text/plain")
+
 
 if __name__ == "__main__":
     testbed = None
