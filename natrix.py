@@ -20,6 +20,7 @@ class Handler(object):
     def render(self, template, **kwargs):
         self.response.headers["Content-Type"] = "text/html"
         self.response.write(self.render_string(template, **kwargs))
+        raise self.response.Sent
 
     def render_string(self, template, **kwargs):
         env = Environment(loader=FileSystemLoader("./templates"))
@@ -52,6 +53,7 @@ class Response(object):
     def __call__(self, text):
         " Shortcut method of self.write() "
         self.write(text)
+        raise self.Sent
 
     def write(self, text):
         if not isinstance(text, str):
@@ -63,6 +65,9 @@ class Response(object):
     def status_full(self):
         # todo: status messages for status code
         return "%s OK" % self.status
+
+    class Sent(Exception):
+        " Response sent "
 
 
 def _make_app(routes=None, config=None):
@@ -105,7 +110,10 @@ def _make_app(routes=None, config=None):
             if hasattr(handler, "__call__"):
                 _self = Handler(request, response, config)
 
-                handler(_self)
+                try:
+                    handler(_self)
+                except response.Sent:
+                    pass
                 response = _self.response
         else:
             response.body = "It works!"
