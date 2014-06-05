@@ -1,3 +1,4 @@
+import json
 from jinja2 import Environment, FileSystemLoader
 from google.appengine.api import memcache
 from google.appengine.ext import db
@@ -70,7 +71,7 @@ class Response(object):
         " Response sent "
 
 
-def _make_app(routes=None, config=None):
+class Application(object):
     """ Generate the WSGI application function
 
         routes - Route tuples `(regex, view)`
@@ -78,10 +79,12 @@ def _make_app(routes=None, config=None):
 
         Returns WSGI app function
     """
-    routes = routes or []  # none to list
-    config = config or {}  # none to dict
 
-    def app(environ, start_response):
+    def __init__(self, routes=None, config=None):
+        self.routes = routes or []  # none to list
+        self.config = config or {}  # none to dict
+
+    def __call__(self, environ, start_response):
         """ Called by WSGI when a request comes in
             This function standardized in PEP-3333
 
@@ -94,8 +97,8 @@ def _make_app(routes=None, config=None):
         request = Request(environ)
         response = Response()
 
-        if request.path in dict(routes):
-            handler = dict(routes)[request.path]
+        if request.path in dict(self.routes):
+            handler = dict(self.routes)[request.path]
 
             # Simple string handler. Format:
             # [<Response body>, <Status code>, <Content-Type>]
@@ -108,7 +111,7 @@ def _make_app(routes=None, config=None):
 
             # Function handler
             if hasattr(handler, "__call__"):
-                _self = Handler(request, response, config)
+                _self = Handler(request, response, self.config)
 
                 try:
                     handler(_self)
@@ -122,7 +125,12 @@ def _make_app(routes=None, config=None):
 
         return [response.body]
 
-    return app
+    def route(self, route):
+        def func(handler):
+            self.routes.append((route, handler))
+
+        return func
 
 
-wsgi_app = _make_app  # alias
+app = Application()
+route = app.route   # alias

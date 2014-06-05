@@ -58,9 +58,9 @@ def test_Response():
     eq(response.headers, {"Content-Type": "text/plain"})
 
 
-def test_wsgi_app():
+def test_Application():
     # empty route
-    app = natrix.wsgi_app()
+    app = natrix.Application()
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/")
@@ -69,7 +69,7 @@ def test_wsgi_app():
     eq(response.content_type, "text/plain")
 
     # basic routing
-    app = natrix.wsgi_app([
+    app = natrix.Application([
         ("/hello", ["Hello world!"]),
         ("/lorem", ["Lorem ipsum"]),
     ])
@@ -91,7 +91,7 @@ def test_wsgi_app():
     eq(response.content_type, "text/plain")
 
     # list handler complicated
-    app = natrix.wsgi_app([
+    app = natrix.Application([
         ("/status", ["Hello world!", 201]),
         ("/content_type", ["[1, 2]", 202, "application/json"]),
     ])
@@ -116,7 +116,7 @@ def test_wsgi_app():
         x.response.status = "202"
         x.response("OK4")
 
-    app = natrix.wsgi_app([
+    app = natrix.Application([
         ("/ok", lambda self: self.response("OK")),
         ("/ok2", lambda x: x.response("OK2")),
         ("/ok3", ok3),
@@ -152,7 +152,7 @@ def test_Handler():
     def ok3(x):
         x.response(x.render_string("ok.html", hello="!"))
 
-    app = natrix.wsgi_app([
+    app = natrix.Application([
         ("/ok", lambda self: self.render("ok.html")),
         ("/ok2", ok2),
         ("/ok3", ok3),
@@ -175,7 +175,7 @@ def test_Handler():
     eq(response.content_type, "text/plain")
 
     # default context
-    app = natrix.wsgi_app([
+    app = natrix.Application([
         ("/ok", lambda self: self.render("ok.html")),
         ("/ok2", ok2),
         ("/ok3", ok3),
@@ -200,7 +200,7 @@ def test_Handler():
     eq(response.content_type, "text/plain")
 
     # default context as function
-    app = natrix.wsgi_app([
+    app = natrix.Application([
         ("/ok", lambda self: self.render("ok.html")),
         ("/ok2", ok2),
         ("/ok3", ok3),
@@ -228,6 +228,37 @@ def test_Handler():
 def test_google_appengine_shortcuts():
     ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))
     ok(str(natrix.memcache)[9:].startswith("google.appengine.api.memcache"))
+
+
+def test_app():
+    testapp = webtest.TestApp(natrix.app)
+
+    natrix.route("/hello")(["Hello world!"])
+    natrix.route("/world")(lambda x: x.render("ok.html"))
+
+    @natrix.route("/world2")
+    def hello(x):
+        x.render("ok.html")
+
+    response = testapp.get("/")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "It works!")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/hello")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "Hello world!")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/world")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.content_type, "text/html")
+
+    response = testapp.get("/world2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.content_type, "text/html")
 
 
 if __name__ == "__main__":
