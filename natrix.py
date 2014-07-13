@@ -41,8 +41,8 @@ class Request(object):
 
 class Response(object):
     " Abstraction for an HTTP Response "
-    def __init__(self):
-        self.status = 200
+    def __init__(self, code=None):
+        self.code = code or 200
         self.body = ""
 
         # Default headers
@@ -62,9 +62,17 @@ class Response(object):
         self.body += text
 
     @property
-    def status_full(self):
+    def status(self):
         # todo: status messages for status code
-        return "%s OK" % self.status
+        # http://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+        http_status = {
+            200: "200 OK",
+            201: "201 Created",
+            202: "202 Accepted",
+            404: "404 Not Found",
+        }
+
+        return http_status[self.code]
 
     class Sent(Exception):
         " Response sent "
@@ -104,7 +112,7 @@ class Application(object):
             if isinstance(handler, list):
                 response.body = handler[0]
                 if len(handler) > 1:
-                    response.status = handler[1]
+                    response.code = handler[1]
                 if len(handler) > 2:
                     response.headers["Content-Type"] = handler[2]
 
@@ -118,10 +126,10 @@ class Application(object):
                     pass
                 response = _self.response
         else:
-            response.status = 404
+            response.code = 404
             response.body = "Error 404"
 
-        start_response(response.status_full, response.headers.items())
+        start_response(response.status, response.headers.items())
 
         return [response.body]
 

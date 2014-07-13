@@ -52,10 +52,13 @@ def test_Request():
 
 
 def test_Response():
+    # default code
     response = natrix.Response()
-    eq(response.status, 200)
-    eq(response.status_full, "200 OK")
-    eq(response.headers, {"Content-Type": "text/plain"})
+    eq(response.code, 200)
+
+    # status line
+    eq(natrix.Response(code=200).status, "200 OK")
+    eq(natrix.Response(code=404).status, "404 Not Found")
 
 
 def test_Application():
@@ -109,11 +112,11 @@ def test_Application():
 
     # function handler
     def ok3(self):
-        self.response.status = 201
+        self.response.code = 201
         self.response("OK3")
 
     def ok4(x):
-        x.response.status = "202"
+        x.response.code = 202
         x.response("OK4")
 
     app = natrix.Application([
