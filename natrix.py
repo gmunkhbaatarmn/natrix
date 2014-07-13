@@ -1,9 +1,11 @@
 import json
+import sys
 from time import sleep
 from jinja2 import Environment, FileSystemLoader
 from google.appengine.api import memcache
 from google.appengine.ext import db
 
+sys.path.append("./packages")
 
 __all__ = ["db", "memcache"]
 
