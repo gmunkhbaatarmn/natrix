@@ -1,4 +1,3 @@
-import json
 from jinja2 import Environment, FileSystemLoader
 from google.appengine.api import memcache
 from google.appengine.ext import db
@@ -128,6 +127,7 @@ class Application(object):
     def route(self, route):
         def func(handler):
             self.routes.append((route, handler))
+            return handler
 
         return func
 
