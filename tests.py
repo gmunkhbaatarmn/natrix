@@ -63,9 +63,9 @@ def test_Application():
     app = natrix.Application()
     testapp = webtest.TestApp(app)
 
-    response = testapp.get("/")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "It works!")
+    response = testapp.get("/", status=404)
+    eq(response.status_int, 404)
+    eq(response.normal_body, "Error 404")
     eq(response.content_type, "text/plain")
 
     # basic routing
@@ -75,9 +75,9 @@ def test_Application():
     ])
     testapp = webtest.TestApp(app)
 
-    response = testapp.get("/")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "It works!")
+    response = testapp.get("/", status=404)
+    eq(response.status_int, 404)
+    eq(response.normal_body, "Error 404")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/hello")
@@ -240,9 +240,9 @@ def test_app():
     def hello(x):
         x.render("ok.html")
 
-    response = testapp.get("/")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "It works!")
+    response = testapp.get("/", status=404)
+    eq(response.status_int, 404)
+    eq(response.normal_body, "Error 404")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/hello")
@@ -263,4 +263,4 @@ def test_app():
 
 if __name__ == "__main__":
     testbed = None
-    nose.main(defaultTest=__file__)
+    nose.main(argv=[__file__, "--stop"])

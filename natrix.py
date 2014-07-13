@@ -118,7 +118,8 @@ class Application(object):
                     pass
                 response = _self.response
         else:
-            response.body = "It works!"
+            response.status = 404
+            response.body = "Error 404"
 
         start_response(response.status_full, response.headers.items())
 
