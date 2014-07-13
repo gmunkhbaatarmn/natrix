@@ -47,7 +47,7 @@ class Response(object):
 
         # Default headers
         self.headers = {
-            "Content-Type": "text/plain",
+            "Content-Type": "text/plain; charset=utf-8",
         }
 
     def __call__(self, text):
