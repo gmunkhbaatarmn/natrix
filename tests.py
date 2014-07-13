@@ -52,17 +52,41 @@ def test_Request():
 
 
 def test_Response():
-    # default code
+    # response.code (default code)
     response = natrix.Response()
     eq(response.code, 200)
 
-    # status line
+    # response.status (status line)
     eq(natrix.Response(code=200).status, "200 OK")
     eq(natrix.Response(code=201).status, "201 Created")
     eq(natrix.Response(code=202).status, "202 Accepted")
     eq(natrix.Response(code=301).status, "301 Moved Permanently")
     eq(natrix.Response(code=302).status, "302 Found")
     eq(natrix.Response(code=404).status, "404 Not Found")
+
+    # response.write
+    response = natrix.Response()
+    response.write("Hello")
+    eq(response.body, "Hello")
+
+    response = natrix.Response()
+    response.write([1, 2], encode="json")
+    eq(response.body, "[1, 2]")
+
+    # response(...)
+    response = natrix.Response()
+    try:
+        response("Hello")
+    except response.Sent:
+        pass
+    eq(response.body, "Hello")
+
+    response = natrix.Response()
+    try:
+        response("Hello")
+    except response.Sent:
+        pass
+    eq(response.body, "Hello")
 
 
 def test_Application():

@@ -1,3 +1,4 @@
+import json
 from time import sleep
 from jinja2 import Environment, FileSystemLoader
 from google.appengine.api import memcache
@@ -62,12 +63,17 @@ class Response(object):
             "Content-Type": "text/plain; charset=utf-8",
         }
 
-    def __call__(self, text):
+    def __call__(self, value, **kwargs):
         " Shortcut method of self.write() "
-        self.write(text)
+        self.write(value, **kwargs)
         raise self.Sent
 
-    def write(self, text):
+    def write(self, value, **kwargs):
+        if kwargs.get("encode") == "json":
+            value = json.dumps(value)
+
+        text = "%s" % value
+
         if not isinstance(text, str):
             text = text.encode("utf-8")
 
