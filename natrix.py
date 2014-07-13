@@ -1,6 +1,7 @@
 import json
 import sys
 from time import sleep
+from urlparse import parse_qs
 from jinja2 import Environment, FileSystemLoader
 from google.appengine.api import memcache
 from google.appengine.ext import db
@@ -52,6 +53,28 @@ class Request(object):
     def __init__(self, environ):
         self.method = environ["REQUEST_METHOD"].upper()
         self.path = environ["PATH_INFO"]
+        self.query = environ["QUERY_STRING"]
+        self.params = parse_qs(environ["QUERY_STRING"])
+        if "wsgi.input" in environ:
+            self.POST = parse_qs(environ["wsgi.input"].read())
+            self.params.update(self.POST)
+
+        # allow custom method
+        if self.method == "POST" and ":method" in self.params:
+            if self.params.get(":method")[0].isupper():
+                self.method = self.params.get(":method")[0]
+
+    def __getitem__(self, name):
+        " Example: self.request[:name] "
+        value = ""
+        if name in self.params:
+            value = self.params.get(name)
+
+        # not list, individual value
+        if isinstance(value, list) and len(value) == 1:
+            value = value[0]
+
+        return value
 
 
 class Response(object):

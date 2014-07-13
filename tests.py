@@ -285,6 +285,34 @@ def test_Handler_redirect():
     eq(response.content_type, "text/plain")
 
 
+def test_Handler_request():
+    app = natrix.Application([
+        ("/", lambda x: x.response("%s" % x.request["hello"])),
+        ("/method", lambda x: x.response("%s" % x.request.method)),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/?hello=world")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "world")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.post("/", {"hello": "earth"})
+    eq(response.status_int, 200)
+    eq(response.normal_body, "earth")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.post("/method", {":method": "PUBLISH"})
+    eq(response.status_int, 200)
+    eq(response.normal_body, "PUBLISH")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.post("/method", {":method": "Publish"})
+    eq(response.status_int, 200)
+    eq(response.normal_body, "POST")
+    eq(response.content_type, "text/plain")
+
+
 def test_google_appengine_shortcuts():
     ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))
     ok(str(natrix.memcache)[9:].startswith("google.appengine.api.memcache"))
