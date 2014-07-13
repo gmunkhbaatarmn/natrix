@@ -16,8 +16,9 @@ def setup():
     testbed.activate()
 
     # Declare which stubs want to use
+    testbed.init_datastore_v3_stub()
+    testbed.init_memcache_stub()
     # testbed.init_urlfetch_stub()
-    # testbed.init_memcache_stub()
     # testbed.init_mail_stub()
 
 
@@ -318,6 +319,18 @@ def test_app():
     eq(response.status_int, 200)
     eq(response.normal_body, "<b>ok хорошо</b>")
     eq(response.content_type, "text/html")
+
+
+def test_data():
+    natrix.data.write("hello", 123)
+    eq(natrix.data.fetch("hello"), 123)
+
+    natrix.memcache.flush_all()
+    eq(natrix.data.fetch("hello"), 123)
+    eq(natrix.data.fetch("not-found", 234), 234)
+
+    natrix.data.erase("hello")
+    eq(natrix.data.fetch("hello"), None)
 
 
 if __name__ == "__main__":

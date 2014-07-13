@@ -173,5 +173,38 @@ class Application(object):
         return func
 
 
+# Shortcut
+class Data(db.Model):
+    " Data.write, Data.fetch "
+    name = db.StringProperty()
+    value = db.TextProperty()
+
+    @classmethod
+    def fetch(cls, name, default=None):
+        value = memcache.get(name)
+        if value:
+            return json.loads(value)
+        c = cls.all().filter("name =", name).get()
+        if c:
+            memcache.set(name, c.value)
+            return json.loads(c.value)
+        return default
+
+    @classmethod
+    def write(cls, name, value):
+        data = json.dumps(value)
+        memcache.set(name, data)
+
+        c = cls.all().filter("name =", name).get() or cls(name=name)
+        c.value = data
+        c.save()
+
+    @classmethod
+    def erase(cls, name):
+        memcache.delete(name)
+        db.delete(cls.all().filter("name =", name))
+
+
 app = Application()
 route = app.route   # alias
+data = Data  # alias
