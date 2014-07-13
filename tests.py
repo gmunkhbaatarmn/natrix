@@ -32,29 +32,30 @@ def test_Request():
     environ = {
         "PATH_INFO": "/",
         "REQUEST_METHOD": "GET",
+        "QUERY_STRING": "",
         # "HTTP_HOST": "localhost:80",
-        # "QUERY_STRING": "",
         # "SERVER_NAME": "localhost",
         # "SERVER_PORT": 80,
         # "SERVER_PROTOCOL": "HTTP/1.0",
         # "wsgi.url_scheme": "http",
     }
     request = natrix.Request(environ)
-    eq(request.method, "get")
+    eq(request.method, "GET")
     eq(request.path, "/")
 
     # more cases
     environ["PATH_INFO"] = "/test"
     environ["REQUEST_METHOD"] = "POST"
     request = natrix.Request(environ)
-    eq(request.method, "post")
+    eq(request.method, "POST")
     eq(request.path, "/test")
 
 
 def test_Response():
-    # response.code (default code)
+    # response defaults
     response = natrix.Response()
     eq(response.code, 200)
+    eq(response.headers, {"Content-Type": "text/plain; charset=utf-8"})
 
     # response.status (status line)
     eq(natrix.Response(code=200).status, "200 OK")
@@ -281,6 +282,7 @@ def test_Handler_redirect():
     eq(response.status_int, 301)
     eq(response.normal_body, "")
     eq(response.content_type, "text/plain")
+
 
 def test_google_appengine_shortcuts():
     ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))

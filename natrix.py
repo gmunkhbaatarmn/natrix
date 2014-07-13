@@ -48,7 +48,7 @@ class Handler(object):
 class Request(object):
     " Abstraction for an HTTP request "
     def __init__(self, environ):
-        self.method = environ["REQUEST_METHOD"].lower()
+        self.method = environ["REQUEST_METHOD"].upper()
         self.path = environ["PATH_INFO"]
 
 
