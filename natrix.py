@@ -1,3 +1,4 @@
+from time import sleep
 from jinja2 import Environment, FileSystemLoader
 from google.appengine.api import memcache
 from google.appengine.ext import db
@@ -30,6 +31,17 @@ class Handler(object):
         context.update(self.config["context"])
 
         return env.get_template(template).render(context)
+
+    def redirect(self, url, code=302, delay=0):
+        self.response.headers["Location"] = url
+        self.response.code = code
+        self.response.body = ""
+
+        # useful in after datastore write action
+        if delay:
+            sleep(delay)
+
+        raise self.response.Sent
 
 
 class Request(object):
@@ -66,10 +78,22 @@ class Response(object):
         # todo: status messages for status code
         # http://en.wikipedia.org/wiki/List_of_HTTP_status_codes
         http_status = {
+            # 100, 101, 102
             200: "200 OK",
             201: "201 Created",
             202: "202 Accepted",
+            # 203, 204, 205, 206, 207, 208, 226
+            # 300
+            301: "301 Moved Permanently",
+            302: "302 Found",
+            # 303, 304, 305, 306, 307, 308
+            # 400, 401, 402, 403
             404: "404 Not Found",
+            # 405, 406, 407, 408, 409, 410, 411, 412, 413, 415, 416, 417, 418
+            # 419, 420, 422, 423, 424, 426, 428, 429, 431, 440, 444, 449, 450
+            # 451, 494, 494, 495, 496, 497, 498, 499
+            # 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511
+            # 520, 511, 520, 521, 522, 523, 524, 598, 599
         }
 
         return http_status[self.code]

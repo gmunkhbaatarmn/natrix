@@ -58,6 +58,10 @@ def test_Response():
 
     # status line
     eq(natrix.Response(code=200).status, "200 OK")
+    eq(natrix.Response(code=201).status, "201 Created")
+    eq(natrix.Response(code=202).status, "202 Accepted")
+    eq(natrix.Response(code=301).status, "301 Moved Permanently")
+    eq(natrix.Response(code=302).status, "302 Found")
     eq(natrix.Response(code=404).status, "404 Not Found")
 
 
@@ -227,6 +231,32 @@ def test_Handler():
     eq(response.normal_body, "<b>ok хорошо!</b>")
     eq(response.content_type, "text/plain")
 
+
+def test_Handler_redirect():
+    app = natrix.Application([
+        ("/", lambda self: self.redirect("/2")),
+        ("/1", lambda self: self.redirect("http://github.com/", delay=0.2)),
+        ("/2", lambda self: self.redirect("http://github.com/", code=301)),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/")
+    eq(response.location, "/2")
+    eq(response.status_int, 302)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/1")
+    eq(response.location, "http://github.com/")
+    eq(response.status_int, 302)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/2")
+    eq(response.location, "http://github.com/")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
 def test_google_appengine_shortcuts():
     ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))
