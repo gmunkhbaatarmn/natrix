@@ -309,9 +309,10 @@ def test_Handler_render():
 
 def test_Handler_redirect():
     app = natrix.Application([
-        ("/", lambda self: self.redirect("/2")),
-        ("/1", lambda self: self.redirect("http://github.com/", delay=0.2)),
-        ("/2", lambda self: self.redirect("http://github.com/", code=301)),
+        ("/", lambda x: x.redirect("/2")),
+        ("/1", lambda x: x.redirect("http://github.com/", delay=0.2)),
+        ("/2", lambda x: x.redirect("http://github.com/", code=301)),
+        ("/3", lambda x: x.redirect("http://github.com/", permanent=True)),
     ])
     testapp = webtest.TestApp(app)
 
@@ -328,6 +329,12 @@ def test_Handler_redirect():
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/2")
+    eq(response.location, "http://github.com/")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/3")
     eq(response.location, "http://github.com/")
     eq(response.status_int, 301)
     eq(response.normal_body, "")

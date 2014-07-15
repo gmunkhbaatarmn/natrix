@@ -68,7 +68,10 @@ class Handler(object):
 
         return env.get_template(template).render(context)
 
-    def redirect(self, url, code=302, delay=0):
+    def redirect(self, url, permanent=False, code=302, delay=0):
+        if permanent:
+            code = 301
+
         self.response.headers["Location"] = url
         self.response.code = code
         self.response.body = ""
