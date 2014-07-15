@@ -13,16 +13,6 @@ sys.path.append("./packages")
 __all__ = ["db", "memcache"]
 
 
-class Model(db.Model):
-    @classmethod
-    def find(cls, *args, **kwargs):
-        q = cls.all()
-        for k, v in kwargs.items():
-            q.filter("%s =" % k, v)
-
-        return q.get()
-
-
 def route_match(routes, path, method):
     for route in routes:
         _route = route[0]
@@ -42,47 +32,7 @@ def route_match(routes, path, method):
     return (False, None, None)
 
 
-class Handler(object):
-    def __init__(self, request, response, config):
-        config["context"] = config.get("context") or (lambda x: {})
-
-        if isinstance(config["context"], dict):
-            config["context"] = lambda x, d=config["context"]: d
-
-        self.request = request
-        self.response = response
-        self.config = config
-
-    def render(self, template, *args, **kwargs):
-        self.response.headers["Content-Type"] = "text/html"
-        self.response.write(self.render_string(template, *args, **kwargs))
-        raise self.response.Sent
-
-    def render_string(self, template, context=None, **kwargs):
-        env = Environment(loader=FileSystemLoader("./templates"))
-
-        context = context or {}
-        context["request"] = self.request
-        context.update(self.config["context"](self))
-        context.update(kwargs)
-
-        return env.get_template(template).render(context)
-
-    def redirect(self, url, permanent=False, code=302, delay=0):
-        if permanent:
-            code = 301
-
-        self.response.headers["Location"] = url
-        self.response.code = code
-        self.response.body = ""
-
-        # useful in after datastore write action
-        if delay:
-            sleep(delay)
-
-        raise self.response.Sent
-
-
+# Core classes
 class Request(object):
     " Abstraction for an HTTP request "
     def __init__(self, environ):
@@ -167,6 +117,47 @@ class Response(object):
 
     class Sent(Exception):
         " Response sent "
+
+
+class Handler(object):
+    def __init__(self, request, response, config):
+        config["context"] = config.get("context") or (lambda x: {})
+
+        if isinstance(config["context"], dict):
+            config["context"] = lambda x, d=config["context"]: d
+
+        self.request = request
+        self.response = response
+        self.config = config
+
+    def render(self, template, *args, **kwargs):
+        self.response.headers["Content-Type"] = "text/html"
+        self.response.write(self.render_string(template, *args, **kwargs))
+        raise self.response.Sent
+
+    def render_string(self, template, context=None, **kwargs):
+        env = Environment(loader=FileSystemLoader("./templates"))
+
+        context = context or {}
+        context["request"] = self.request
+        context.update(self.config["context"](self))
+        context.update(kwargs)
+
+        return env.get_template(template).render(context)
+
+    def redirect(self, url, permanent=False, code=302, delay=0):
+        if permanent:
+            code = 301
+
+        self.response.headers["Location"] = url
+        self.response.code = code
+        self.response.body = ""
+
+        # useful in after datastore write action
+        if delay:
+            sleep(delay)
+
+        raise self.response.Sent
 
 
 class Application(object):
@@ -262,7 +253,17 @@ class Application(object):
         return func
 
 
-# Shortcut
+# Services
+class Model(db.Model):
+    @classmethod
+    def find(cls, *args, **kwargs):
+        q = cls.all()
+        for k, v in kwargs.items():
+            q.filter("%s =" % k, v)
+
+        return q.get()
+
+
 class Data(db.Model):
     " Data.write, Data.fetch "
     name = db.StringProperty()
