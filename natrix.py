@@ -196,7 +196,17 @@ class Application(object):
         return func
 
 
-# Shortcut
+# Services
+class Model(db.Model):
+    @classmethod
+    def find(cls, *args, **kwargs):
+        q = cls.all()
+        for k, v in kwargs.items():
+            q.filter("%s =" % k, v)
+
+        return q.get()
+
+
 class Data(db.Model):
     " Data.write, Data.fetch "
     name = db.StringProperty()

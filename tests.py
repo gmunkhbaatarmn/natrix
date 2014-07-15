@@ -361,6 +361,20 @@ def test_data():
     eq(natrix.data.fetch("hello"), None)
 
 
+def test_Model():
+    class Data(natrix.Model):
+        name = natrix.db.StringProperty()
+        value = natrix.db.TextProperty()
+
+    natrix.data.write("hello", 123)
+    d = Data.find(name="hello")
+    eq(d.name, "hello")
+    eq(d.value, "123")
+
+    eq(Data.find(name="earth"), None)
+    eq(Data.find(name="earth") or 234, 234)
+
+
 if __name__ == "__main__":
     testbed = None
     nose.main(argv=[__file__, "--stop"])
