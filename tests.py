@@ -178,7 +178,7 @@ def test_Application():
     eq(response.content_type, "text/plain")
 
 
-def test_Handler():
+def test_Handler_render():
     def ok2(x):
         x.response(x.render_string("ok.html"))
 
@@ -238,18 +238,18 @@ def test_Handler():
         ("/ok2", ok2),
         ("/ok3", ok3),
     ], {
-        "context": lambda self: {"hello": "!"},
+        "context": lambda self: {"hello": self.request.path},
     })
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.normal_body, "<b>ok хорошо/ok</b>")
     eq(response.content_type, "text/html")
 
     response = testapp.get("/ok2")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.normal_body, "<b>ok хорошо/ok2</b>")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/ok3")

@@ -11,28 +11,39 @@ sys.path.append("./packages")
 __all__ = ["db", "memcache"]
 
 
+class Model(db.Model):
+    @classmethod
+    def find(cls, *args, **kwargs):
+        q = cls.all()
+        for k, v in kwargs.items():
+            q.filter("%s =" % k, v)
+
+        return q.get()
+
+
 class Handler(object):
     def __init__(self, request, response, config):
+        config["context"] = config.get("context") or (lambda x: {})
+
+        if isinstance(config["context"], dict):
+            config["context"] = lambda x, d=config["context"]: d
+
         self.request = request
         self.response = response
         self.config = config
-
-        # Config default values
-        config["context"] = config.get("context", {})
-        if hasattr(config["context"], "__call__"):
-            config["context"] = config["context"](self)
 
     def render(self, template, **kwargs):
         self.response.headers["Content-Type"] = "text/html"
         self.response.write(self.render_string(template, **kwargs))
         raise self.response.Sent
 
-    def render_string(self, template, **kwargs):
+    def render_string(self, template, context=None, **kwargs):
         env = Environment(loader=FileSystemLoader("./templates"))
 
-        context = kwargs.copy()
+        context = context or {}
         context["request"] = self.request
-        context.update(self.config["context"])
+        context.update(self.config["context"](self))
+        context.update(kwargs)
 
         return env.get_template(template).render(context)
 
@@ -196,17 +207,7 @@ class Application(object):
         return func
 
 
-# Services
-class Model(db.Model):
-    @classmethod
-    def find(cls, *args, **kwargs):
-        q = cls.all()
-        for k, v in kwargs.items():
-            q.filter("%s =" % k, v)
-
-        return q.get()
-
-
+# Shortcut
 class Data(db.Model):
     " Data.write, Data.fetch "
     name = db.StringProperty()
