@@ -1,5 +1,6 @@
-import json
+import re
 import sys
+import json
 from time import sleep
 from urlparse import parse_qs
 from jinja2 import Environment, FileSystemLoader
@@ -21,6 +22,25 @@ class Model(db.Model):
         return q.get()
 
 
+def route_match(routes, path, method):
+    for route in routes:
+        _route = route[0]
+
+        route_method = "GET"
+        if re.search(":[A-Z]+$", _route):
+            route_method = _route.rsplit(":", 1)[1]
+            _route = _route.rsplit(":", 1)[0]
+
+        if route_method != method:
+            # method not allowed
+            continue
+
+        r = "^%s$" % _route
+        if re.search(r, path):
+            return (True, route[1], re.search(r, path).groups())
+    return (False, None, None)
+
+
 class Handler(object):
     def __init__(self, request, response, config):
         config["context"] = config.get("context") or (lambda x: {})
@@ -32,9 +52,9 @@ class Handler(object):
         self.response = response
         self.config = config
 
-    def render(self, template, **kwargs):
+    def render(self, template, *args, **kwargs):
         self.response.headers["Content-Type"] = "text/html"
-        self.response.write(self.render_string(template, **kwargs))
+        self.response.write(self.render_string(template, *args, **kwargs))
         raise self.response.Sent
 
     def render_string(self, template, context=None, **kwargs):
@@ -170,9 +190,24 @@ class Application(object):
         request = Request(environ)
         response = Response()
 
-        if request.path in dict(self.routes):
-            handler = dict(self.routes)[request.path]
+        if hasattr(self, "before"):
+            before_self = Handler(request, response, self.config)
 
+            try:
+                self.before(before_self)
+            except response.Sent:
+                pass
+            response = before_self.response
+
+        if response.body or response.code != 200:
+            start_response(response.status, response.headers.items())
+            return [response.body]
+
+        matched, handler, args = route_match(self.routes, request.path,
+                                             request.method)
+
+        # if request.path in dict(self.routes):
+        if matched:
             # Simple string handler. Format:
             # [<Response body>, <Status code>, <Content-Type>]
             if isinstance(handler, list):
@@ -187,7 +222,7 @@ class Application(object):
                 _self = Handler(request, response, self.config)
 
                 try:
-                    handler(_self)
+                    handler(_self, *args)
                 except response.Sent:
                     pass
                 response = _self.response
@@ -203,6 +238,13 @@ class Application(object):
         def func(handler):
             self.routes.append((route, handler))
             return handler
+
+        def func_before(handler):
+            self.before = handler
+            return handler
+
+        if route == ":before":
+            return func_before
 
         return func
 

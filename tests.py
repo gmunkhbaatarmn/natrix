@@ -178,6 +178,38 @@ def test_Application():
     eq(response.content_type, "text/plain")
 
 
+def test_route_before():
+    # before override
+    app = natrix.Application([
+        ("/ok", lambda x: x.response("OK")),
+    ])
+    @app.route(":before")
+    def ok(x):
+        x.response("BEFORE!")
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "BEFORE!")
+    eq(response.content_type, "text/plain")
+
+    # before not override
+    app = natrix.Application([
+        ("/ok", lambda x: x.response("OK")),
+    ])
+    @app.route(":before")
+    def ok2(x):
+        x.response.headers["Content-Type"] = "text/custom"
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "OK")
+    eq(response.content_type, "text/custom")
+
+
 def test_Handler_render():
     def ok2(x):
         x.response(x.render_string("ok.html"))
@@ -288,7 +320,9 @@ def test_Handler_redirect():
 def test_Handler_request():
     app = natrix.Application([
         ("/", lambda x: x.response("%s" % x.request["hello"])),
-        ("/method", lambda x: x.response("%s" % x.request.method)),
+        ("/:POST", lambda x: x.response("post: %s" % x.request["hello"])),
+        ("/method:PUBLISH", lambda x: x.response("%s" % x.request.method)),
+        ("/method:POST", lambda x: x.response("%s" % x.request.method)),
     ])
     testapp = webtest.TestApp(app)
 
@@ -299,7 +333,7 @@ def test_Handler_request():
 
     response = testapp.post("/", {"hello": "earth"})
     eq(response.status_int, 200)
-    eq(response.normal_body, "earth")
+    eq(response.normal_body, "post: earth")
     eq(response.content_type, "text/plain")
 
     response = testapp.post("/method", {":method": "PUBLISH"})
