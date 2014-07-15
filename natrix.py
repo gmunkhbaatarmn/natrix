@@ -2,10 +2,11 @@ import re
 import sys
 import json
 from time import sleep
+from logging import error
 from urlparse import parse_qs
-from jinja2 import Environment, FileSystemLoader
-from google.appengine.api import memcache
 from google.appengine.ext import db
+from google.appengine.api import memcache
+from jinja2 import Environment, FileSystemLoader
 
 sys.path.append("./packages")
 
@@ -154,7 +155,8 @@ class Response(object):
             # 405, 406, 407, 408, 409, 410, 411, 412, 413, 415, 416, 417, 418
             # 419, 420, 422, 423, 424, 426, 428, 429, 431, 440, 444, 449, 450
             # 451, 494, 494, 495, 496, 497, 498, 499
-            # 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511
+            500: "500 Internal Server Error",
+            # 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511
             # 520, 511, 520, 521, 522, 523, 524, 598, 599
         }
 
@@ -225,6 +227,14 @@ class Application(object):
                     handler(_self, *args)
                 except response.Sent:
                     pass
+                except Exception:
+                    import traceback
+                    response.headers["Content-Type"] = "text/plain;error"
+                    lines = traceback.format_exception(*sys.exc_info())
+                    response.code = 500
+                    response.body = "".join(lines)
+                    error("".join(traceback.format_exception(*sys.exc_info())))
+
                 response = _self.response
         else:
             response.code = 404

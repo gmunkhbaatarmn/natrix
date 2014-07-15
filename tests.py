@@ -2,7 +2,7 @@
 import nose
 import natrix
 import webtest
-from nose.tools import eq_ as eq, ok_ as ok
+from nose.tools import eq_ as eq, ok_ as ok, timed
 from google.appengine.ext.testbed import Testbed
 
 
@@ -178,11 +178,27 @@ def test_Application():
     eq(response.content_type, "text/plain")
 
 
+def test_Application_exception():
+    app = natrix.Application([
+        ("/", lambda x: x.response("" + 1)),
+    ])
+    testapp = webtest.TestApp(app)
+
+    natrix_error = natrix.error
+    natrix.error = lambda x: x
+    response = testapp.get("/", status=500)
+    eq(response.status_int, 500)
+    ok(response.normal_body.startswith("Traceback (most recent call last)"))
+    eq(response.content_type, "text/plain")
+    natrix.error = natrix_error
+
+
 def test_route_before():
     # before override
     app = natrix.Application([
         ("/ok", lambda x: x.response("OK")),
     ])
+
     @app.route(":before")
     def ok(x):
         x.response("BEFORE!")
@@ -198,6 +214,7 @@ def test_route_before():
     app = natrix.Application([
         ("/ok", lambda x: x.response("OK")),
     ])
+
     @app.route(":before")
     def ok2(x):
         x.response.headers["Content-Type"] = "text/custom"
@@ -304,7 +321,7 @@ def test_Handler_redirect():
     eq(response.normal_body, "")
     eq(response.content_type, "text/plain")
 
-    response = testapp.get("/1")
+    response = timed(0.3)(lambda: testapp.get("/1"))()
     eq(response.location, "http://github.com/")
     eq(response.status_int, 302)
     eq(response.normal_body, "")
