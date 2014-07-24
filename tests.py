@@ -18,8 +18,6 @@ def setup():
     # Declare which stubs want to use
     testbed.init_datastore_v3_stub()
     testbed.init_memcache_stub()
-    # testbed.init_urlfetch_stub()
-    # testbed.init_mail_stub()
 
 
 def teardown():
@@ -29,16 +27,12 @@ def teardown():
     testbed.deactivate()
 
 
+# Core classes
 def test_Request():
     environ = {
         "PATH_INFO": "/",
         "REQUEST_METHOD": "GET",
         "QUERY_STRING": "",
-        # "HTTP_HOST": "localhost:80",
-        # "SERVER_NAME": "localhost",
-        # "SERVER_PORT": 80,
-        # "SERVER_PROTOCOL": "HTTP/1.0",
-        # "wsgi.url_scheme": "http",
     }
     request = natrix.Request(environ)
     eq(request.method, "GET")
@@ -89,6 +83,150 @@ def test_Response():
     except response.Sent:
         pass
     eq(response.body, "Hello")
+
+
+def test_Handler_render():
+    def ok2(x):
+        x.response(x.render_string("ok.html"))
+
+    def ok3(x):
+        x.response(x.render_string("ok.html", hello="!"))
+
+    app = natrix.Application([
+        ("/ok", lambda self: self.render("ok.html")),
+        ("/ok2", ok2),
+        ("/ok3", ok3),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.content_type, "text/html")
+
+    response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok3")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+    # default context
+    app = natrix.Application([
+        ("/ok", lambda self: self.render("ok.html")),
+        ("/ok2", ok2),
+        ("/ok3", ok3),
+    ], {
+        "context": {"hello": "!"},
+    })
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/html")
+
+    response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok3")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+    # default context as function
+    app = natrix.Application([
+        ("/ok", lambda self: self.render("ok.html")),
+        ("/ok2", ok2),
+        ("/ok3", ok3),
+    ], {
+        "context": lambda self: {"hello": self.request.path},
+    })
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо/ok</b>")
+    eq(response.content_type, "text/html")
+
+    response = testapp.get("/ok2")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо/ok2</b>")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/ok3")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.content_type, "text/plain")
+
+
+def test_Handler_redirect():
+    app = natrix.Application([
+        ("/", lambda x: x.redirect("/2")),
+        ("/1", lambda x: x.redirect("http://github.com/", delay=0.2)),
+        ("/2", lambda x: x.redirect("http://github.com/", code=301)),
+        ("/3", lambda x: x.redirect("http://github.com/", permanent=True)),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/")
+    eq(response.location, "/2")
+    eq(response.status_int, 302)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = timed(0.3)(lambda: testapp.get("/1"))()
+    eq(response.location, "http://github.com/")
+    eq(response.status_int, 302)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/2")
+    eq(response.location, "http://github.com/")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/3")
+    eq(response.location, "http://github.com/")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+
+def test_Handler_request():
+    app = natrix.Application([
+        ("/", lambda x: x.response("%s" % x.request["hello"])),
+        ("/#post", lambda x: x.response("post: %s" % x.request["hello"])),
+        ("/method#publish", lambda x: x.response("%s" % x.request.method)),
+        ("/method#post", lambda x: x.response("%s" % x.request.method)),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/?hello=world")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "world")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.post("/", {"hello": "earth"})
+    eq(response.status_int, 200)
+    eq(response.normal_body, "post: earth")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.post("/method", {":method": "PUBLISH"})
+    eq(response.status_int, 200)
+    eq(response.normal_body, "PUBLISH")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.post("/method", {":method": "Publish"})
+    eq(response.status_int, 200)
+    eq(response.normal_body, "PUBLISH")
+    eq(response.content_type, "text/plain")
 
 
 def test_Application():
@@ -227,153 +365,31 @@ def test_route_before():
     eq(response.content_type, "text/custom")
 
 
-def test_Handler_render():
-    def ok2(x):
-        x.response(x.render_string("ok.html"))
+# Services
+def test_Model():
+    class Data(natrix.Model):
+        name = natrix.db.StringProperty()
+        value = natrix.db.TextProperty()
 
-    def ok3(x):
-        x.response(x.render_string("ok.html", hello="!"))
+    natrix.data.write("hello", 123)
+    d = Data.find(name="hello")
+    eq(d.name, "hello")
+    eq(d.value, "123")
 
-    app = natrix.Application([
-        ("/ok", lambda self: self.render("ok.html")),
-        ("/ok2", ok2),
-        ("/ok3", ok3),
-    ])
-    testapp = webtest.TestApp(app)
-
-    response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо</b>")
-    eq(response.content_type, "text/html")
-
-    response = testapp.get("/ok2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо</b>")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/ok3")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
-    eq(response.content_type, "text/plain")
-
-    # default context
-    app = natrix.Application([
-        ("/ok", lambda self: self.render("ok.html")),
-        ("/ok2", ok2),
-        ("/ok3", ok3),
-    ], {
-        "context": {"hello": "!"},
-    })
-    testapp = webtest.TestApp(app)
-
-    response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
-    eq(response.content_type, "text/html")
-
-    response = testapp.get("/ok2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/ok3")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
-    eq(response.content_type, "text/plain")
-
-    # default context as function
-    app = natrix.Application([
-        ("/ok", lambda self: self.render("ok.html")),
-        ("/ok2", ok2),
-        ("/ok3", ok3),
-    ], {
-        "context": lambda self: {"hello": self.request.path},
-    })
-    testapp = webtest.TestApp(app)
-
-    response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо/ok</b>")
-    eq(response.content_type, "text/html")
-
-    response = testapp.get("/ok2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо/ok2</b>")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/ok3")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
-    eq(response.content_type, "text/plain")
+    eq(Data.find(name="earth"), None)
+    eq(Data.find(name="earth") or 234, 234)
 
 
-def test_Handler_redirect():
-    app = natrix.Application([
-        ("/", lambda x: x.redirect("/2")),
-        ("/1", lambda x: x.redirect("http://github.com/", delay=0.2)),
-        ("/2", lambda x: x.redirect("http://github.com/", code=301)),
-        ("/3", lambda x: x.redirect("http://github.com/", permanent=True)),
-    ])
-    testapp = webtest.TestApp(app)
+def test_data():
+    natrix.data.write("hello", 123)
+    eq(natrix.data.fetch("hello"), 123)
 
-    response = testapp.get("/")
-    eq(response.location, "/2")
-    eq(response.status_int, 302)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    natrix.memcache.flush_all()
+    eq(natrix.data.fetch("hello"), 123)
+    eq(natrix.data.fetch("not-found", 234), 234)
 
-    response = timed(0.3)(lambda: testapp.get("/1"))()
-    eq(response.location, "http://github.com/")
-    eq(response.status_int, 302)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/2")
-    eq(response.location, "http://github.com/")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/3")
-    eq(response.location, "http://github.com/")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
-
-
-def test_Handler_request():
-    app = natrix.Application([
-        ("/", lambda x: x.response("%s" % x.request["hello"])),
-        ("/:POST", lambda x: x.response("post: %s" % x.request["hello"])),
-        ("/method:PUBLISH", lambda x: x.response("%s" % x.request.method)),
-        ("/method:POST", lambda x: x.response("%s" % x.request.method)),
-    ])
-    testapp = webtest.TestApp(app)
-
-    response = testapp.get("/?hello=world")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "world")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.post("/", {"hello": "earth"})
-    eq(response.status_int, 200)
-    eq(response.normal_body, "post: earth")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.post("/method", {":method": "PUBLISH"})
-    eq(response.status_int, 200)
-    eq(response.normal_body, "PUBLISH")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.post("/method", {":method": "Publish"})
-    eq(response.status_int, 200)
-    eq(response.normal_body, "POST")
-    eq(response.content_type, "text/plain")
-
-
-def test_google_appengine_shortcuts():
-    ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))
-    ok(str(natrix.memcache)[9:].startswith("google.appengine.api.memcache"))
+    natrix.data.erase("hello")
+    eq(natrix.data.fetch("hello"), None)
 
 
 def test_app():
@@ -407,30 +423,9 @@ def test_app():
     eq(response.content_type, "text/html")
 
 
-def test_data():
-    natrix.data.write("hello", 123)
-    eq(natrix.data.fetch("hello"), 123)
-
-    natrix.memcache.flush_all()
-    eq(natrix.data.fetch("hello"), 123)
-    eq(natrix.data.fetch("not-found", 234), 234)
-
-    natrix.data.erase("hello")
-    eq(natrix.data.fetch("hello"), None)
-
-
-def test_Model():
-    class Data(natrix.Model):
-        name = natrix.db.StringProperty()
-        value = natrix.db.TextProperty()
-
-    natrix.data.write("hello", 123)
-    d = Data.find(name="hello")
-    eq(d.name, "hello")
-    eq(d.value, "123")
-
-    eq(Data.find(name="earth"), None)
-    eq(Data.find(name="earth") or 234, 234)
+def test_google_appengine_shortcuts():
+    ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))
+    ok(str(natrix.memcache)[9:].startswith("google.appengine.api.memcache"))
 
 
 if __name__ == "__main__":
