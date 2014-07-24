@@ -1,35 +1,19 @@
 import re
 import sys
 import json
+import hmac
+import hashlib
 from time import sleep
-from logging import error
+from logging import info, warning, error
+from datetime import datetime
 from urlparse import parse_qs
 from google.appengine.ext import db
-from google.appengine.api import memcache
+from google.appengine.api import memcache, taskqueue
 from jinja2 import Environment, FileSystemLoader
 
 sys.path.append("./packages")
 
-__all__ = ["db", "memcache"]
-
-
-def route_match(routes, path, method):
-    for route in routes:
-        _route = route[0]
-
-        route_method = "GET"
-        if re.search(":[A-Z]+$", _route):
-            route_method = _route.rsplit(":", 1)[1]
-            _route = _route.rsplit(":", 1)[0]
-
-        if route_method != method:
-            # method not allowed
-            continue
-
-        r = "^%s$" % _route
-        if re.search(r, path):
-            return (True, route[1], re.search(r, path).groups())
-    return (False, None, None)
+__all__ = ["db", "memcache", "taskqueue", "info"]
 
 
 # Core classes
@@ -40,14 +24,17 @@ class Request(object):
         self.path = environ["PATH_INFO"]
         self.query = environ["QUERY_STRING"]
         self.params = parse_qs(environ["QUERY_STRING"])
+
         if "wsgi.input" in environ:
             self.POST = parse_qs(environ["wsgi.input"].read())
             self.params.update(self.POST)
 
         # allow custom method
         if self.method == "POST" and ":method" in self.params:
-            if self.params.get(":method")[0].isupper():
-                self.method = self.params.get(":method")[0]
+            # if self.params.get(":method")[0].isupper():
+            self.method = self.params.get(":method")[0].upper()
+
+        self.cookies = parse_qs(environ.get("HTTP_COOKIE", ""))
 
     def __getitem__(self, name):
         " Example: self.request[:name] "
@@ -81,6 +68,7 @@ class Response(object):
     def write(self, value, **kwargs):
         if kwargs.get("encode") == "json":
             value = json.dumps(value)
+            self.headers["Content-Type"] = "application/json"
 
         text = "%s" % value
 
@@ -130,16 +118,37 @@ class Handler(object):
         self.response = response
         self.config = config
 
+        if "session-key" not in self.config:
+            self.session = Session({})
+            # info("session-key not configured")
+            return  # no session setup
+
+        session_value = (self.request.cookies.get("session") or [None])[0]
+        self.session = cookie_decode(config["session-key"], session_value)
+        self.session = Session(self.session or {})
+
+    @property
+    def flash(self):
+        return self.session.pop(":flash", None)
+
+    @flash.setter
+    def flash(self, value):
+        warning("flash: %s" % value)
+        self.session[":flash"] = value
+
     def render(self, template, *args, **kwargs):
         self.response.headers["Content-Type"] = "text/html"
         self.response.write(self.render_string(template, *args, **kwargs))
         raise self.response.Sent
 
     def render_string(self, template, context=None, **kwargs):
-        env = Environment(loader=FileSystemLoader("./templates"))
+        env = Environment(loader=FileSystemLoader(
+            self.config.get("template-path") or "./templates"))
 
         context = context or {}
         context["request"] = self.request
+        context["session"] = self.session
+        context["flash"] = self.flash
         context.update(self.config["context"](self))
         context.update(kwargs)
 
@@ -160,6 +169,19 @@ class Handler(object):
         raise self.response.Sent
 
 
+class Router(object):
+    def __init__(self, routes=None):
+        """ Initialize the router
+
+        routes - a list of route tuple
+        """
+        routes = routes or []
+
+    def add(self, route):
+        " Adds a route to this router "
+        assert isinstance(route, tuple)
+
+
 class Application(object):
     """ Generate the WSGI application function
 
@@ -170,6 +192,7 @@ class Application(object):
     """
 
     def __init__(self, routes=None, config=None):
+        # self.router = Router(routes)
         self.routes = routes or []  # none to list
         self.config = config or {}  # none to dict
 
@@ -186,6 +209,27 @@ class Application(object):
         request = Request(environ)
         response = Response()
 
+        '''
+        try:
+            request = Request(environ)
+            response = Response()
+
+            try:
+                Router = object()
+                Router.match(request)
+                pass
+                # route_matched
+            except Exception as ex:
+                response = self.internal_error()
+
+            # return response
+            start_response(response.status, response.headers.items())
+            return [response.body]
+        finally:
+            pass
+        '''
+
+        # PATCH: route(:before)
         if hasattr(self, "before"):
             before_self = Handler(request, response, self.config)
 
@@ -193,16 +237,28 @@ class Application(object):
                 self.before(before_self)
             except response.Sent:
                 pass
-            response = before_self.response
+            _response = before_self.response
 
-        if response.body or response.code != 200:
-            start_response(response.status, response.headers.items())
-            return [response.body]
+            if _response.body or _response.code != 200:
+                if before_self.session != before_self.session.initial:
+                    # session changed
+                    cookie = cookie_encode(before_self.config["session-key"],
+                                           before_self.session)
+                    response.headers["Set-Cookie"] = "session=%s" % cookie
+
+                start_response(response.status, response.headers.items())
+                return [response.body]
+            else:
+                if before_self.session != before_self.session.initial:
+                    cookie = cookie_encode(before_self.config["session-key"],
+                                           before_self.session)
+                    request.cookies = {"session": [cookie]}
+                    response.headers["Set-Cookie"] = "session=%s" % cookie
+        # END: route(:before)
 
         matched, handler, args = route_match(self.routes, request.path,
                                              request.method)
 
-        # if request.path in dict(self.routes):
         if matched:
             # Simple string handler. Format:
             # [<Response body>, <Status code>, <Content-Type>]
@@ -229,13 +285,19 @@ class Application(object):
                     response.body = "".join(lines)
                     error("".join(traceback.format_exception(*sys.exc_info())))
 
+                if _self.session != _self.session.initial:
+                    # session changed
+                    cookie = cookie_encode(_self.config["session-key"],
+                                           _self.session)
+                    _self.response.headers["Set-Cookie"] = "session=%s" % \
+                        cookie
+
                 response = _self.response
         else:
             response.code = 404
             response.body = "Error 404"
 
         start_response(response.status, response.headers.items())
-
         return [response.body]
 
     def route(self, route):
@@ -251,6 +313,108 @@ class Application(object):
             return func_before
 
         return func
+
+    '''
+    def internal_error():
+        import traceback
+        trace = traceback.format_exception(*sys.exc_info())
+
+        # todo: debug is true or false
+
+        response = Response()
+        response.headers["Content-Type"] = "text/plain;error"
+        response.code = 500
+        response.body = "".join(trace)
+
+        # logging to console
+        error("".join(trace))
+
+        return response
+    '''
+
+
+# Helpers
+class Session(dict):
+    " customized dict for session "
+    def __init__(self, *args, **kwargs):
+        super(Session, self).__init__(*args, **kwargs)
+        self.initial = self.copy()
+
+
+def cookie_encode(key, value, timestamp=None):
+    """ Secure cookie serialize
+
+    key - key string used in cookie signature
+    name - cookie name
+    value - cookie value to be serialized
+
+    Returns a serialized value ready to be stored in a cookie
+    """
+    timestamp = timestamp or datetime.now().strftime("%s")
+    value = json.dumps(value).encode("base64").replace("\n", "")
+    signature = cookie_signature(key, value, timestamp)
+
+    return "%s|%s|%s" % (value, timestamp, signature)
+
+
+def cookie_decode(key, value, max_age=None):
+    """ Secure cookie de-serialize
+
+    key - key string used in cookie signature
+    value - cookie value to be deserialized
+    max_age - maximum age in seconds for valid cookie
+
+    Returns the deserialized secure cookie or none
+    """
+    if not value or value.count("|") != 2:
+        return None
+
+    encoded_value, timestamp, signature = value.split("|")
+
+    # signature
+    if signature != cookie_signature(key, encoded_value, timestamp):
+        warning("Invalid cookie signature: %r", value)
+        return None
+
+    # session age
+    now = int(datetime.now().strftime("%s"))
+    if max_age is not None and int(timestamp) < now - max_age:
+        warning("Expired cookie: %r", value)
+        return None
+
+    # decode value
+    try:
+        return json.loads(encoded_value.decode("base64"))
+    except Exception:
+        warning("Cookie value not decoded: %r", encoded_value)
+        return None
+
+
+def cookie_signature(key, value, timestamp):
+    " Generates an HMAC signature "
+    signature = hmac.new(key, digestmod=hashlib.sha1)
+    signature.update("%s|%s" % (value, timestamp))
+
+    return signature.hexdigest()
+
+
+def route_match(routes, path, method):
+    for route in routes:
+        _route = route[0]
+
+        route_method = "GET"
+        if re.search("#[a-z-]+$", _route):
+            route_method = _route.rsplit("#", 1)[1].upper()
+            _route = _route.rsplit("#", 1)[0]
+
+        if route_method != method:
+            # method not allowed
+            continue
+
+        r = "^%s$" % _route
+        if re.search(r, path):
+            return (True, route[1], re.search(r, path).groups())
+    return (False, None, None)
 
 
 # Services
@@ -268,6 +432,8 @@ class Data(db.Model):
     " Data.write, Data.fetch "
     name = db.StringProperty()
     value = db.TextProperty()
+
+    updated = db.DateTimeProperty(auto_now=True)
 
     @classmethod
     def fetch(cls, name, default=None):
