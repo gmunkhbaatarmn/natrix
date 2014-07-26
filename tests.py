@@ -208,6 +208,11 @@ def test_Handler_request():
     ])
     testapp = webtest.TestApp(app)
 
+    response = testapp.get("/?hello=%E3")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "\xe3")
+    eq(response.content_type, "text/plain")
+
     response = testapp.get("/?hello=world")
     eq(response.status_int, 200)
     eq(response.normal_body, "world")
