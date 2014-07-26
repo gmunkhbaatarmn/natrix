@@ -41,7 +41,7 @@ class Request(object):
         # if you are using a Javascript library that sets it (or you set the
         # header yourself manually).
         # Currently Prototype and jQuery are known to set this header.
-        if self.environ.get("HTTP_X_REQUESTED_WITH", "") == "XMLHttpRequest":
+        if environ.get("HTTP_X_REQUESTED_WITH", "") == "XMLHttpRequest":
             self.is_xhr = True
         else:
             self.is_xhr = False
@@ -186,6 +186,12 @@ class Handler(object):
             sleep(delay)
 
         raise self.response.Sent
+
+    def abort(self, code, *args, **kwargs):
+        self.response.code = code
+        self.response.body = "Error: %s" % code
+
+        raise self.request.Sent
 
 
 class Router(object):
