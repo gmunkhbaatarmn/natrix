@@ -48,6 +48,13 @@ class Request(object):
 
         self.remote_addr = environ.get("REMOTE_ADDR", None)
 
+        self.host = environ.get("HTTP_HOST", "")
+        self.domain = self.host.split(":", 1)[0]
+
+        self.url = self.host + "/" + self.path
+        if self.query:
+            self.url += "?" + self.query
+
     def __getitem__(self, name):
         " Example: self.request[:name] "
         value = ""
