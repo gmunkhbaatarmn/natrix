@@ -46,6 +46,8 @@ class Request(object):
         else:
             self.is_xhr = False
 
+        self.remote_addr = environ.get("REMOTE_ADDR", None)
+
     def __getitem__(self, name):
         " Example: self.request[:name] "
         value = ""
