@@ -36,6 +36,16 @@ class Request(object):
 
         self.cookies = parse_qs(environ.get("HTTP_COOKIE", ""))
 
+        # Is X-Requested-With header present and equal to ``XMLHttpRequest``?
+        # Note: this isn't set by every XMLHttpRequest request, it is only set
+        # if you are using a Javascript library that sets it (or you set the
+        # header yourself manually).
+        # Currently Prototype and jQuery are known to set this header.
+        if self.environ.get("HTTP_X_REQUESTED_WITH", "") == "XMLHttpRequest":
+            self.is_xhr = True
+        else:
+            self.is_xhr = False
+
     def __getitem__(self, name):
         " Example: self.request[:name] "
         value = ""
