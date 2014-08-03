@@ -2,7 +2,9 @@ import re
 import sys
 import json
 import hmac
+import Cookie
 import hashlib
+import traceback
 from time import sleep
 from logging import info, warning, error
 from datetime import datetime
@@ -31,10 +33,11 @@ class Request(object):
 
         # allow custom method
         if self.method == "POST" and ":method" in self.params:
-            # if self.params.get(":method")[0].isupper():
             self.method = self.params.get(":method")[0].upper()
 
-        self.cookies = parse_qs(environ.get("HTTP_COOKIE", ""))
+        cookie = Cookie.SimpleCookie()
+        cookie.load(environ.get("HTTP_COOKIE", ""))
+        self.cookies = dict(cookie.items())
 
         # Is X-Requested-With header present and equal to ``XMLHttpRequest``?
         # Note: this isn't set by every XMLHttpRequest request, it is only set
@@ -142,9 +145,13 @@ class Handler(object):
             # info("session-key not configured")
             return  # no session setup
 
-        session_value = (self.request.cookies.get("session") or [None])[0]
-        self.session = cookie_decode(config["session-key"], session_value)
-        self.session = Session(self.session or {})
+        if "session" in self.request.cookies:
+            session_value = self.request.cookies["session"].value
+            session = cookie_decode(config["session-key"], session_value)
+        else:
+            session = {}
+
+        self.session = Session(session or {})
 
     @property
     def flash(self):
@@ -152,7 +159,6 @@ class Handler(object):
 
     @flash.setter
     def flash(self, value):
-        warning("flash: %s" % value)
         self.session[":flash"] = value
 
     def render(self, template, *args, **kwargs):
@@ -164,14 +170,22 @@ class Handler(object):
         env = Environment(loader=FileSystemLoader(
             self.config.get("template-path") or "./templates"))
 
-        context = context or {}
-        context["request"] = self.request
-        context["session"] = self.session
-        context["flash"] = self.flash
-        context.update(self.config["context"](self))
-        context.update(kwargs)
+        context_dict = {
+            "json": json,
+            "dir": dir,
+            "int": int,
+            "now": datetime.now(),
 
-        return env.get_template(template).render(context)
+            "debug": self.config.get("debug"),
+            "request": self.request,
+            "session": self.session,
+            "flash": self.flash,
+        }
+        context_dict.update(context or {})
+        context_dict.update(self.config["context"](self))
+        context_dict.update(kwargs)
+
+        return env.get_template(template).render(context_dict)
 
     def redirect(self, url, permanent=False, code=302, delay=0):
         if permanent:
@@ -191,171 +205,137 @@ class Handler(object):
         self.response.code = code
         self.response.body = "Error: %s" % code
 
-        raise self.request.Sent
-
-
-class Router(object):
-    def __init__(self, routes=None):
-        """ Initialize the router
-
-        routes - a list of route tuple
-        """
-        routes = routes or []
-
-    def add(self, route):
-        " Adds a route to this router "
-        assert isinstance(route, tuple)
+        raise self.response.Sent
 
 
 class Application(object):
     """ Generate the WSGI application function
 
-        routes - Route tuples `(regex, view)`
-        config - A configuration dictionary for the application
+    routes - Route tuples `(regex, view)`
+    config - A configuration dictionary for the application
 
-        Returns WSGI app function
+    Returns WSGI app function
     """
 
     def __init__(self, routes=None, config=None):
-        # self.router = Router(routes)
-        self.routes = routes or []  # none to list
+        self.routes = routes or []
         self.config = config or {}  # none to dict
 
     def __call__(self, environ, start_response):
         """ Called by WSGI when a request comes in
-            This function standardized in PEP-3333
 
-            environ        - A WSGI environment
-            start_response - Accepting a status code, a list of headers and an
-                             optional exception context to start the response
+        This function standardized in PEP-3333
 
-            Returns an iterable with the response to return the client
+        environ - A WSGI environment
+        start_response - Accepting a status code, a list of headers and an
+                         optional exception context to start the response
+
+        Returns an iterable with the response to return the client
         """
-        request = Request(environ)
-        response = Response()
-
-        '''
         try:
             request = Request(environ)
-            response = Response()
+            response = Response()  # todo: change
 
             try:
-                Router = object()
-                Router.match(request)
-                pass
-                # route_matched
-            except Exception as ex:
-                response = self.internal_error()
+                " before "
+                before, args = self.get_before(request.path, request.method)
+                if before:
+                    x = Handler(request, response, self.config)
+                    try:
+                        before(x, *args)
+                    except response.Sent:
+                        pass
 
-            # return response
+                    # save session
+                    if x.session != x.session.initial:
+                        cookie = cookie_encode(x.config["session-key"],
+                                               x.session)
+                        x.response.headers["Set-Cookie"] = \
+                            "session=%s; path=/;" % cookie
+
+                    request = x.request
+                    response = x.response
+
+                    if response.body or response.code != 200:
+                        start_response(response.status,
+                                       response.headers.items())
+                        return [response.body]
+
+                " handler "
+                handler, args = self.get_handler(request.path, request.method)
+                if handler:
+                    x = Handler(request, response, self.config)
+                    try:
+                        handler(x, *args)
+                    except response.Sent:
+                        pass
+
+                    # save session
+                    if x.session != x.session.initial:
+                        cookie = cookie_encode(x.config["session-key"],
+                                               x.session)
+                        x.response.headers["Set-Cookie"] = "session=%s; path=/;" % cookie
+
+                    request = x.request
+                    response = x.response
+                else:
+                    response.code = 404
+                    response.body = "Error 404"
+            except Exception:
+                response = self.internal_error(request, response)
+
             start_response(response.status, response.headers.items())
             return [response.body]
         finally:
             pass
-        '''
-
-        # PATCH: route(:before)
-        if hasattr(self, "before"):
-            before_self = Handler(request, response, self.config)
-
-            try:
-                self.before(before_self)
-            except response.Sent:
-                pass
-            _response = before_self.response
-
-            if _response.body or _response.code != 200:
-                if before_self.session != before_self.session.initial:
-                    # session changed
-                    cookie = cookie_encode(before_self.config["session-key"],
-                                           before_self.session)
-                    response.headers["Set-Cookie"] = "session=%s" % cookie
-
-                start_response(response.status, response.headers.items())
-                return [response.body]
-            else:
-                if before_self.session != before_self.session.initial:
-                    cookie = cookie_encode(before_self.config["session-key"],
-                                           before_self.session)
-                    request.cookies = {"session": [cookie]}
-                    response.headers["Set-Cookie"] = "session=%s" % cookie
-        # END: route(:before)
-
-        matched, handler, args = route_match(self.routes, request.path,
-                                             request.method)
-
-        if matched:
-            # Simple string handler. Format:
-            # [<Response body>, <Status code>, <Content-Type>]
-            if isinstance(handler, list):
-                response.body = handler[0]
-                if len(handler) > 1:
-                    response.code = handler[1]
-                if len(handler) > 2:
-                    response.headers["Content-Type"] = handler[2]
-
-            # Function handler
-            if hasattr(handler, "__call__"):
-                _self = Handler(request, response, self.config)
-
-                try:
-                    handler(_self, *args)
-                except response.Sent:
-                    pass
-                except Exception:
-                    import traceback
-                    response.headers["Content-Type"] = "text/plain;error"
-                    lines = traceback.format_exception(*sys.exc_info())
-                    response.code = 500
-                    response.body = "".join(lines)
-                    error("".join(traceback.format_exception(*sys.exc_info())))
-
-                if _self.session != _self.session.initial:
-                    # session changed
-                    cookie = cookie_encode(_self.config["session-key"],
-                                           _self.session)
-                    _self.response.headers["Set-Cookie"] = "session=%s" % \
-                        cookie
-
-                response = _self.response
-        else:
-            response.code = 404
-            response.body = "Error 404"
-
-        start_response(response.status, response.headers.items())
-        return [response.body]
 
     def route(self, route):
         def func(handler):
             self.routes.append((route, handler))
             return handler
 
-        def func_before(handler):
-            self.before = handler
-            return handler
-
-        if route == ":before":
-            return func_before
-
         return func
 
-    '''
-    def internal_error():
-        import traceback
-        trace = traceback.format_exception(*sys.exc_info())
+    def get_handler(self, request_path, request_method):
+        " Returns (handler, args) or (none, none) "
+        for rule, handler in self.routes:
+            " route method. route rule: /path/to#method "
+            if re.search("#[a-z-]+$", rule):
+                rule, method = rule.rsplit("#", 1)
+                method = method.upper()
+            else:
+                method = "GET"  # default method
 
+            " match method "
+            if method != request_method:
+                # method not allowed
+                continue
+
+            " match url "
+            if not re.search("^%s$" % rule, request_path):
+                continue
+
+            return handler, re.search("^%s$" % rule, request_path).groups()
+
+        return None, None
+
+    def get_before(self, request_path, request_method):
+        for rule, handler in self.routes:
+            if rule == ":before":
+                return handler, tuple([])
+
+        return None, None
+
+    def internal_error(self, request, response):
         # todo: debug is true or false
-
-        response = Response()
         response.headers["Content-Type"] = "text/plain;error"
+        lines = traceback.format_exception(*sys.exc_info())
         response.code = 500
-        response.body = "".join(trace)
-
+        response.body = "".join(lines)
         # logging to console
-        error("".join(trace))
+        error("".join(traceback.format_exception(*sys.exc_info())))
 
         return response
-    '''
 
 
 # Helpers
@@ -370,7 +350,6 @@ def cookie_encode(key, value, timestamp=None):
     """ Secure cookie serialize
 
     key - key string used in cookie signature
-    name - cookie name
     value - cookie value to be serialized
 
     Returns a serialized value ready to be stored in a cookie
@@ -421,25 +400,6 @@ def cookie_signature(key, value, timestamp):
     signature.update("%s|%s" % (value, timestamp))
 
     return signature.hexdigest()
-
-
-def route_match(routes, path, method):
-    for route in routes:
-        _route = route[0]
-
-        route_method = "GET"
-        if re.search("#[a-z-]+$", _route):
-            route_method = _route.rsplit("#", 1)[1].upper()
-            _route = _route.rsplit("#", 1)[0]
-
-        if route_method != method:
-            # method not allowed
-            continue
-
-        r = "^%s$" % _route
-        if re.search(r, path):
-            return (True, route[1], re.search(r, path).groups())
-    return (False, None, None)
 
 
 # Services
