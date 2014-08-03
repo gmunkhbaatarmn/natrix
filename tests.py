@@ -244,46 +244,6 @@ def test_Application():
     eq(response.normal_body, "Error 404")
     eq(response.content_type, "text/plain")
 
-    # basic routing
-    app = natrix.Application([
-        ("/hello", ["Hello world!"]),
-        ("/lorem", ["Lorem ipsum"]),
-    ])
-    testapp = webtest.TestApp(app)
-
-    response = testapp.get("/", status=404)
-    eq(response.status_int, 404)
-    eq(response.normal_body, "Error 404")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/hello")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "Hello world!")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/lorem")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "Lorem ipsum")
-    eq(response.content_type, "text/plain")
-
-    # list handler complicated
-    app = natrix.Application([
-        ("/status", ["Hello world!", 201]),
-        ("/content_type", ["[1, 2]", 202, "application/json"]),
-    ])
-    testapp = webtest.TestApp(app)
-
-    response = testapp.get("/status")
-    eq(response.status_int, 201)
-    eq(response.normal_body, "Hello world!")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/content_type")
-    eq(response.status_int, 202)
-    eq(response.normal_body, "[1, 2]")
-    eq(response.content_type, "application/json")
-
-    # function handler
     def ok3(self):
         self.response.code = 201
         self.response("OK3")
@@ -400,7 +360,6 @@ def test_data():
 def test_app():
     testapp = webtest.TestApp(natrix.app)
 
-    natrix.route("/hello")(["Hello world!"])
     natrix.route("/world")(lambda x: x.render("ok.html"))
 
     @natrix.route("/world2")
@@ -410,11 +369,6 @@ def test_app():
     response = testapp.get("/", status=404)
     eq(response.status_int, 404)
     eq(response.normal_body, "Error 404")
-    eq(response.content_type, "text/plain")
-
-    response = testapp.get("/hello")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "Hello world!")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/world")

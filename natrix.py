@@ -274,7 +274,8 @@ class Application(object):
                     if x.session != x.session.initial:
                         cookie = cookie_encode(x.config["session-key"],
                                                x.session)
-                        x.response.headers["Set-Cookie"] = "session=%s; path=/;" % cookie
+                        x.response.headers["Set-Cookie"] = \
+                            "session=%s; path=/;" % cookie
 
                     request = x.request
                     response = x.response
