@@ -229,8 +229,8 @@ class Handler(object):
             "session": self.session,
             "flash": self.flash,
         }
-        context_dict.update(context or {})
         context_dict.update(self.config["context"](self))
+        context_dict.update(context or {})
         context_dict.update(kwargs)
 
         return env.get_template(template).render(context_dict)
