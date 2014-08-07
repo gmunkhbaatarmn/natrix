@@ -5,10 +5,10 @@ import hmac
 import Cookie
 import hashlib
 import traceback
+from cgi import parse_qs
 from time import sleep
 from logging import info, warning, error
 from datetime import datetime
-from urlparse import parse_qs
 from google.appengine.ext import db
 from google.appengine.api import memcache, taskqueue
 from jinja2 import Environment, FileSystemLoader
@@ -25,10 +25,11 @@ class Request(object):
         self.method = environ["REQUEST_METHOD"].upper()
         self.path = environ["PATH_INFO"]
         self.query = environ["QUERY_STRING"]
-        self.params = parse_qs(environ["QUERY_STRING"])
+        self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
 
         if "wsgi.input" in environ:
-            self.POST = parse_qs(environ["wsgi.input"].read())
+            self.POST = parse_qs(environ["wsgi.input"].read(),
+                                 keep_blank_values=1)
             self.params.update(self.POST)
 
         # allow custom method
