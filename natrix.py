@@ -14,8 +14,7 @@ from google.appengine.api import memcache, taskqueue
 from jinja2 import Environment, FileSystemLoader
 
 sys.path.append("./packages")
-
-__all__ = ["db", "memcache", "taskqueue", "info"]
+info, taskqueue  # pyflakes fix
 
 
 # Core classes
