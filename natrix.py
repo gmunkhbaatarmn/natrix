@@ -101,8 +101,6 @@ class Response(object):
 
     @property
     def status(self):
-        # todo: status messages for status code
-        # http://en.wikipedia.org/wiki/List_of_HTTP_status_codes
         http_status = {
             100: "100 Continue",
             101: "101 Switching Protocols",
@@ -375,7 +373,7 @@ class Application(object):
         return None, None
 
     def internal_error(self, request, response):
-        # todo: debug is true or false
+        # todo: internal error: debug is true or false
         response.headers["Content-Type"] = "text/plain;error"
         lines = traceback.format_exception(*sys.exc_info())
         response.code = 500
