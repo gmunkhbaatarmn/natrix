@@ -16,6 +16,8 @@ from jinja2 import Environment, FileSystemLoader
 sys.path.append("./packages")
 info, taskqueue  # pyflakes fix
 
+__version__ = "0.0.1"
+
 
 # Core classes
 class Request(object):
@@ -54,7 +56,7 @@ class Request(object):
         self.host = environ.get("HTTP_HOST", "")
         self.domain = self.host.split(":", 1)[0]
 
-        self.url = self.host + "/" + self.path
+        self.url = self.host + self.path
         if self.query:
             self.url += "?" + self.query
 
@@ -307,9 +309,10 @@ class Application(object):
                         return [response.body]
 
                 " handler "
+                x = Handler(request, response, self.config)
+
                 handler, args = self.get_handler(request.path, request.method)
                 if handler:
-                    x = Handler(request, response, self.config)
                     try:
                         handler(x, *args)
                     except response.Sent:
@@ -325,10 +328,28 @@ class Application(object):
                     request = x.request
                     response = x.response
                 else:
-                    response.code = 404
-                    response.body = "Error 404"
-            except Exception:
-                response = self.internal_error(request, response)
+                    not_found = self.get_error_404()
+                    x.response.code = 404
+                    try:
+                        not_found(x)
+                    except response.Sent:
+                        pass
+                    response = x.response
+
+            except Exception as ex:
+                x = Handler(request, response, self.config)
+                x.exception = ex
+                x.response.code = 500
+
+                # logging to console
+                error("".join(traceback.format_exception(*sys.exc_info())))
+
+                internal_error = self.get_error_500()
+                try:
+                    internal_error(x)
+                except response.Sent:
+                    pass
+                response = x.response
 
             start_response(response.status, response.headers.items())
             return [response.body]
@@ -372,16 +393,30 @@ class Application(object):
 
         return None, None
 
-    def internal_error(self, request, response):
-        # todo: internal error: debug is true or false
-        response.headers["Content-Type"] = "text/plain;error"
-        lines = traceback.format_exception(*sys.exc_info())
-        response.code = 500
-        response.body = "".join(lines)
-        # logging to console
-        error("".join(traceback.format_exception(*sys.exc_info())))
+    def get_error_404(self):
+        def _not_found(x):
+            x.response.code = 404
+            x.response.body = "Error 404"
 
-        return response
+        for rule, handler in self.routes:
+            if rule == ":error-404":
+                return handler
+
+        return _not_found
+
+    def get_error_500(self):
+        def _internal_error(x):
+            # todo: internal error: debug is true or false
+            lines = traceback.format_exception(*sys.exc_info())
+
+            x.response.headers["Content-Type"] = "text/plain;error"
+            x.response.body = "".join(lines)
+
+        for rule, handler in self.routes:
+            if rule == ":error-500":
+                return handler
+
+        return _internal_error
 
 
 # Helpers
