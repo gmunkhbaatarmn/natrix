@@ -214,8 +214,9 @@ class Handler(object):
         raise self.response.Sent
 
     def render_string(self, template, context=None, **kwargs):
-        env = Environment(loader=FileSystemLoader(
-            self.config.get("template-path") or "./templates"))
+        template_path = self.config.get("template-path") or "./templates"
+        env = Environment(loader=FileSystemLoader(template_path),
+                          extensions=["jinja2.ext.loopcontrols"])
 
         context_dict = {
             "json": json,
@@ -281,7 +282,7 @@ class Application(object):
         """
         try:
             request = Request(environ)
-            response = Response()  # todo: change
+            response = Response()
 
             try:
                 " before "
@@ -406,7 +407,6 @@ class Application(object):
 
     def get_error_500(self):
         def _internal_error(x):
-            # todo: internal error: debug is true or false
             lines = traceback.format_exception(*sys.exc_info())
 
             x.response.headers["Content-Type"] = "text/plain;error"
