@@ -186,14 +186,14 @@ def test_Handler_render():
 
 def test_Handler_redirect():
     app = natrix.Application([
-        ("/", lambda x: x.redirect("/2")),
+        ("/0", lambda x: x.redirect("/2")),
         ("/1", lambda x: x.redirect("http://github.com/", delay=0.2)),
         ("/2", lambda x: x.redirect("http://github.com/", code=301)),
         ("/3", lambda x: x.redirect("http://github.com/", permanent=True)),
     ])
     testapp = webtest.TestApp(app)
 
-    response = testapp.get("/")
+    response = testapp.get("/0")
     eq(response.location, "/2")
     eq(response.status_int, 302)
     eq(response.normal_body, "")
@@ -256,8 +256,8 @@ def test_Handler_request():
     response = testapp.get("/is-ajax")
     eq(response.normal_body, "False")
 
-    response = testapp.get("/is-ajax", headers={"X-Requested-With":
-                                                "XMLHttpRequest"})
+    headers = {"X-Requested-With": "XMLHttpRequest"}
+    response = testapp.get("/is-ajax", headers=headers)
     eq(response.normal_body, "True")
 
 
@@ -303,15 +303,9 @@ def test_Handler_session():
 
 def test_Handler_abort():
     " Tests `x.abort` in controller "
-    def not_found(x):
-        x.abort(404)
-
-    def internal_error(x):
-        x.abort(500)
-
     app = natrix.Application([
-        ("/404", not_found),
-        ("/500", internal_error),
+        ("/404", lambda x: x.abort(404)),
+        ("/500", lambda x: x.abort(500)),
     ])
 
     testapp = webtest.TestApp(app)
@@ -418,6 +412,31 @@ def test_route_before():
     eq(response.status_int, 200)
     eq(response.normal_body, "OK")
     eq(response.content_type, "text/custom")
+
+
+def test_route_error():
+    app = natrix.Application([
+        ("/500", lambda x: x.response(None.None)),
+    ])
+
+    @app.route(":error-404")
+    def error_404(x):
+        x.response("Custom error 404")
+
+    @app.route(":error-500")
+    def error_500(x):
+        x.response("Custom error 500")
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/", status=404)
+    eq(response.normal_body, "Custom error 404")
+
+    natrix_error = natrix.error
+    natrix.error = lambda x: x
+    response = testapp.get("/500", status=500)
+    eq(response.normal_body, "Custom error 500")
+    natrix.error = natrix_error
 
 
 # Services

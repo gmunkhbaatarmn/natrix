@@ -330,6 +330,7 @@ class Application(object):
                 " handler "
                 x = Handler(request, response, self.config)
                 x.not_found = self.get_error_404()
+                x.internal_error = self.get_error_500()
 
                 handler, args = self.get_handler(request.path, request.method)
                 if handler:
