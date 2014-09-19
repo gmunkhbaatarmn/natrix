@@ -45,11 +45,7 @@ class Request(object):
 
         # allow custom method
         if self.method == "POST" and ":method" in self.params:
-            method = self.params.get(":method")
-            if isinstance(method, list):
-                self.method = method[0].upper()
-            else:
-                self.method = method.upper()
+            self.method = self.params.get(":method")[0].upper()
 
         cookie = Cookie.SimpleCookie()
         cookie.load(environ.get("HTTP_COOKIE", ""))
@@ -273,7 +269,7 @@ class Handler(object):
         if code == 404:
             self.not_found(self)
         else:
-            self.response.body = "Error: %s" % code
+            self.response.body = "Error %s" % code
 
         raise self.response.Sent
 

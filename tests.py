@@ -224,6 +224,7 @@ def test_Handler_request():
         ("/#post", lambda x: x.response("post: %s" % x.request["hello"])),
         ("/method#publish", lambda x: x.response("%s" % x.request.method)),
         ("/method#post", lambda x: x.response("%s" % x.request.method)),
+        ("/is-ajax", lambda x: x.response("%s" % x.request.is_xhr)),
     ])
     testapp = webtest.TestApp(app)
 
@@ -251,6 +252,13 @@ def test_Handler_request():
     eq(response.status_int, 200)
     eq(response.normal_body, "PUBLISH")
     eq(response.content_type, "text/plain")
+
+    response = testapp.get("/is-ajax")
+    eq(response.normal_body, "False")
+
+    response = testapp.get("/is-ajax", headers={"X-Requested-With":
+                                                "XMLHttpRequest"})
+    eq(response.normal_body, "True")
 
 
 def test_Handler_session():
@@ -291,6 +299,28 @@ def test_Handler_session():
 
     response = testapp.get("/flash_fetch")
     eq(response.normal_body, "Foo")
+
+
+def test_Handler_abort():
+    " Tests `x.abort` in controller "
+    def not_found(x):
+        x.abort(404)
+
+    def internal_error(x):
+        x.abort(500)
+
+    app = natrix.Application([
+        ("/404", not_found),
+        ("/500", internal_error),
+    ])
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/404", status=404)
+    eq(response.normal_body, "Error 404")
+
+    response = testapp.get("/500", status=500)
+    eq(response.normal_body, "Error 500")
 
 
 def test_Application():
