@@ -301,6 +301,80 @@ def test_Handler_session():
     eq(response.normal_body, "Foo")
 
 
+def test_Handler_session_before():
+    " Tests `x.session` with route(:before) "
+    app = natrix.Application([
+        ("/1", lambda x: x.response("%s" % x.session)),
+    ])
+    app.config["session-key"] = "random-string"
+
+    @app.route(":before")
+    def before(x):
+        x.session["foo"] = "bar"
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/1")
+    eq(response.normal_body, "{u'foo': u'bar'}")
+
+
+def test_Handler_session_negative():
+    " Tests session negative cases "
+    app = natrix.Application([
+        ("/1", lambda x: x.response("%s" % x.session)),
+    ])
+    app.config["session-key"] = "random-string"
+
+    testapp = webtest.TestApp(app)
+
+    # CookieError
+    natrix_warning = natrix.warning
+    natrix.warning = lambda x: x
+    testapp.set_cookie("foo:test", "bar")
+    response = testapp.get("/1")
+    eq(response.normal_body, "{}")
+    natrix.warning = natrix_warning
+
+    # invalid session cookie format
+    testapp.reset()
+    testapp.set_cookie("session", "hello|world")
+    response = testapp.get("/1")
+    eq(response.normal_body, "{}")
+
+    # session must be dict
+    testapp.reset()
+    testapp.set_cookie("session", ("IjEi|2111666111|"
+                                   "4df69712d1e398d4be1cd064044a1c138fc098bc"))
+    response = testapp.get("/1")
+    eq(response.normal_body, "{}")
+
+    # invalid cookie signature
+    natrix_warning = natrix.warning
+    natrix.warning = lambda x: x
+    testapp.reset()
+    testapp.set_cookie("session", "eyIxIjogMn0=|2111666111|wronghash")
+    response = testapp.get("/1")
+    eq(response.normal_body, "{}")
+    natrix.warning = natrix_warning
+
+    value = "eyJhIjogImIifQ==|123|f3277d7ce8239065b34324f8d0cc472d28815f9f"
+    natrix_warning = natrix.warning
+    natrix.warning = lambda x: x
+    natrix.cookie_decode("random-string", value, 1)
+    natrix.warning = natrix_warning
+
+    value = "abc|2111666111|12b9b544449e8ef1866f9df1762d4ae3f5a585a9"
+    natrix_warning = natrix.warning
+    natrix.warning = lambda x: x
+    natrix.cookie_decode("random-string", value)
+    natrix.warning = natrix_warning
+
+    # testapp.set_cookie("session", ("eyIxIjogMn0=|2111666111|"
+    #                                "43d8feade6534e4acfd736baf0484b3a74d615b6"))
+    # response = testapp.get("/1")
+    # eq(response.normal_body, "{u'1': 2}")
+
+
 def test_Handler_abort():
     " Tests `x.abort` in controller "
     app = natrix.Application([

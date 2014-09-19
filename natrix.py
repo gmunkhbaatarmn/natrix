@@ -48,7 +48,10 @@ class Request(object):
             self.method = self.params.get(":method")[0].upper()
 
         cookie = Cookie.SimpleCookie()
-        cookie.load(environ.get("HTTP_COOKIE", ""))
+        try:
+            cookie.load(environ.get("HTTP_COOKIE", ""))
+        except Cookie.CookieError:
+            cookie = {}
         self.cookies = dict(cookie.items())
 
         # Is X-Requested-With header present and equal to ``XMLHttpRequest``?
@@ -213,7 +216,10 @@ class Handler(object):
         else:
             session = {}
 
-        self.session = Session(session or {})
+        if not isinstance(session, dict):
+            session = {}
+
+        self.session = Session(session)
 
     @property
     def flash(self):
@@ -314,10 +320,14 @@ class Application(object):
 
                     # save session
                     if x.session != x.session.initial:
-                        cookie = cookie_encode(x.config["session-key"],
-                                               x.session)
-                        x.response.headers["Set-Cookie"] = \
-                            "session=%s; path=/;" % cookie
+                        session_cookie = cookie_encode(x.config["session-key"],
+                                                       x.session)
+                        cookie_value = "session=%s; path=/;" % session_cookie
+
+                        cookie = Cookie.SimpleCookie()
+                        cookie.load(cookie_value)
+                        x.request.cookies = dict(cookie.items())
+                        x.response.headers["Set-Cookie"] = cookie_value
 
                     request = x.request
                     response = x.response
@@ -478,20 +488,20 @@ def cookie_decode(key, value, max_age=None):
 
     # signature
     if signature != cookie_signature(key, encoded_value, timestamp):
-        warning("Invalid cookie signature: %r", value)
+        warning("Invalid cookie signature: %r" % value)
         return None
 
     # session age
     now = int(datetime.now().strftime("%s"))
     if max_age is not None and int(timestamp) < now - max_age:
-        warning("Expired cookie: %r", value)
+        warning("Expired cookie: %r" % value)
         return None
 
     # decode value
     try:
         return json.loads(encoded_value.decode("base64"))
     except Exception:
-        warning("Cookie value not decoded: %r", encoded_value)
+        warning("Cookie value not decoded: %r" % encoded_value)
         return None
 
 
