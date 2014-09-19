@@ -42,6 +42,7 @@ def teardown():
 
 # Core classes
 def test_Request():
+    " Tests `natrix.Request` class individually "
     environ = {
         "PATH_INFO": "/",
         "REQUEST_METHOD": "GET",
@@ -60,6 +61,7 @@ def test_Request():
 
 
 def test_Response():
+    " Tests `natrix.Response` class individually "
     # response defaults
     response = natrix.Response()
     eq(response.code, 200)
@@ -249,6 +251,46 @@ def test_Handler_request():
     eq(response.status_int, 200)
     eq(response.normal_body, "PUBLISH")
     eq(response.content_type, "text/plain")
+
+
+def test_Handler_session():
+    " Tests `x.session` in controller "
+    def write(x):
+        x.session["hello"] = "earth"
+        x.response("OK")
+
+    def fetch(x):
+        x.response(x.session["hello"])
+
+    def flash_write(x):
+        x.flash = "Foo"
+        x.redirect("/write")
+
+    def flash_fetch(x):
+        x.response(x.flash)
+
+    app = natrix.Application([
+        ("/write", write),
+        ("/fetch", fetch),
+        ("/flash_write", flash_write),
+        ("/flash_fetch", flash_fetch),
+    ])
+    app.config["session-key"] = "random-string"
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/write")
+    eq(response.normal_body, "OK")
+
+    response = testapp.get("/fetch")
+    eq(response.normal_body, "earth")
+
+    response = testapp.get("/flash_write")
+    eq(response.status_int, 302)
+    eq(response.location, "/write")
+
+    response = testapp.get("/flash_fetch")
+    eq(response.normal_body, "Foo")
 
 
 def test_Application():
