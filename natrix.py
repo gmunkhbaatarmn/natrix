@@ -38,7 +38,7 @@ class Request(object):
                         self.params[k] = form[k].value
                     else:
                         self.params[k] = form[k]
-            if content_type.startswith("application/x-www-form-urlencoded"):
+            else:
                 self.POST = parse_qs(environ["wsgi.input"].read(),
                                      keep_blank_values=1)
                 self.params.update(self.POST)
@@ -85,7 +85,10 @@ class Request(object):
             value = value[0]
 
         if isinstance(value, str):
-            value = value.decode("utf-8")
+            try:
+                value = value.decode("utf-8")
+            except UnicodeDecodeError:
+                value = value
         return value
 
 
