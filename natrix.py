@@ -30,9 +30,12 @@ class Request(object):
         self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
 
         content_type = environ.get("HTTP_CONTENT_TYPE", "")
+        content_type = content_type or environ.get("CONTENT_TYPE", "")
+
         if "wsgi.input" in environ:
             if content_type.startswith("multipart/form-data"):
-                form = cgi.FieldStorage(environ["wsgi.input"])
+                form = cgi.FieldStorage(fp=environ["wsgi.input"],
+                                        environ=environ)
                 for k in form.keys():
                     if not form[k].filename:
                         self.params[k] = form[k].value
@@ -45,7 +48,11 @@ class Request(object):
 
         # allow custom method
         if self.method == "POST" and ":method" in self.params:
-            self.method = self.params.get(":method")[0].upper()
+            method = self.params.get(":method")
+            if isinstance(method, list):
+                self.method = method[0].upper()
+            else:
+                self.method = method.upper()
 
         cookie = Cookie.SimpleCookie()
         for c in environ.get("HTTP_COOKIE", "").split(";"):

@@ -260,6 +260,22 @@ def test_Handler_request():
     eq(response.normal_body, "True")
 
 
+def test_Handler_request_upload():
+    app = natrix.Application([
+        ("/1#post", lambda x: x.response("%s" % x.request["readme"])),
+        ("/1#upload", lambda x: x.response("%s" % x.request["readme"])),
+    ])
+    testapp = webtest.TestApp(app)
+
+    f = ("readme", "readme.md", "Lorem ipsum dolot sit amet")
+    response = testapp.post("/1", {"a": "b"}, upload_files=[f])
+    eq(response.normal_body, ("FieldStorage('readme', 'readme.md')"))
+
+    f = ("readme", "readme.md", "Lorem ipsum dolot sit amet")
+    response = testapp.post("/1", {":method": "upload"}, upload_files=[f])
+    eq(response.normal_body, ("FieldStorage('readme', 'readme.md')"))
+
+
 def test_Handler_session():
     " Tests `x.session` in controller "
     def write(x):
