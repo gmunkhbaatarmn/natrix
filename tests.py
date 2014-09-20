@@ -256,8 +256,7 @@ def test_Handler_request():
     response = testapp.get("/is-ajax")
     eq(response.normal_body, "False")
 
-    headers = {"X-Requested-With": "XMLHttpRequest"}
-    response = testapp.get("/is-ajax", headers=headers)
+    response = testapp.get("/is-ajax", xhr=True)
     eq(response.normal_body, "True")
 
 
@@ -322,18 +321,22 @@ def test_Handler_session_negative():
     " Tests session negative cases "
     app = natrix.Application([
         ("/1", lambda x: x.response("%s" % x.session)),
+        ("/2", lambda x: x.response("%s" % x.request.cookies)),
     ])
     app.config["session-key"] = "random-string"
 
     testapp = webtest.TestApp(app)
 
     # CookieError
-    natrix_warning = natrix.warning
-    natrix.warning = lambda x: x
+    natrix_info = natrix.info
+    natrix.info = lambda x: x
     testapp.set_cookie("foo:test", "bar")
-    response = testapp.get("/1")
-    eq(response.normal_body, "{}")
-    natrix.warning = natrix_warning
+    testapp.set_cookie("hello", "world")
+    testapp.set_cookie("foo", "bar")
+    response = testapp.get("/2")
+    eq(response.normal_body, ("{'foo': <Morsel: foo='bar'>,"
+                              " 'hello': <Morsel: hello='world'>}"))
+    natrix.info = natrix_info
 
     # invalid session cookie format
     testapp.reset()

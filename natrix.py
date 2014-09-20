@@ -48,10 +48,11 @@ class Request(object):
             self.method = self.params.get(":method")[0].upper()
 
         cookie = Cookie.SimpleCookie()
-        try:
-            cookie.load(environ.get("HTTP_COOKIE", ""))
-        except Cookie.CookieError:
-            cookie = {}
+        for c in environ.get("HTTP_COOKIE", "").split(";"):
+            try:
+                cookie.load(c.strip())
+            except Cookie.CookieError:
+                info("Invalid cookie: %s" % c)
         self.cookies = dict(cookie.items())
 
         # Is X-Requested-With header present and equal to ``XMLHttpRequest``?
