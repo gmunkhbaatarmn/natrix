@@ -190,6 +190,9 @@ def test_Handler_redirect():
         ("/1", lambda x: x.redirect("http://github.com/", delay=0.2)),
         ("/2", lambda x: x.redirect("http://github.com/", code=301)),
         ("/3", lambda x: x.redirect("http://github.com/", permanent=True)),
+        ("/4", lambda x: x.redirect("http://github.com/юникод")),
+        ("/5", lambda x: x.redirect(u"http://github.com/юникод")),
+        ("/6-юникод", lambda x: x.redirect("ok")),
     ])
     testapp = webtest.TestApp(app)
 
@@ -202,20 +205,22 @@ def test_Handler_redirect():
     response = timed(0.3)(lambda: testapp.get("/1"))()
     eq(response.location, "http://github.com/")
     eq(response.status_int, 302)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
 
     response = testapp.get("/2")
     eq(response.location, "http://github.com/")
     eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
 
     response = testapp.get("/3")
     eq(response.location, "http://github.com/")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/4")
+    eq(response.location, "http://github.com/юникод")
+
+    response = testapp.get("/5")
+    eq(response.location, "http://github.com/юникод")
+
+    response = testapp.get("/6-юникод")
+    eq(response.location, "ok")
 
 
 def test_Handler_request():

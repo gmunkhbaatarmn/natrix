@@ -268,6 +268,9 @@ class Handler(object):
         if permanent:
             code = 301
 
+        if isinstance(url, unicode):
+            url = url.encode("utf-8")
+
         self.response.headers["Location"] = url
         self.response.code = code
         self.response.body = ""
