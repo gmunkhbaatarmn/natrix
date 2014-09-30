@@ -215,7 +215,6 @@ class Handler(object):
 
         if "session-key" not in self.config:
             self.session = Session({})
-            # info("session-key not configured")
             return  # no session setup
 
         if "session" in self.request.cookies:
@@ -299,7 +298,6 @@ class Application(object):
 
     Returns WSGI app function
     """
-
     def __init__(self, routes=None, config=None):
         self.routes = routes or []
         self.config = config or {}  # none to dict
@@ -384,7 +382,7 @@ class Application(object):
                 x.response.code = 500
 
                 # logging to console
-                error("".join(traceback.format_exception(*sys.exc_info())))
+                error("Error occured", exc_info=True)
 
                 internal_error = self.get_error_500()
                 try:
@@ -462,7 +460,7 @@ class Application(object):
 
 # Helpers
 class Session(dict):
-    " customized dict for session "
+    " Customized `dict` data structure for session "
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
         self.initial = self.copy()
@@ -492,23 +490,24 @@ def cookie_decode(key, value, max_age=None):
 
     Returns the deserialized secure cookie or none
     """
+    # Cookie must be formatted in `data|timestamp|signature`
     if not value or value.count("|") != 2:
         return None
 
     encoded_value, timestamp, signature = value.split("|")
 
-    # signature
+    # Validate signature
     if signature != cookie_signature(key, encoded_value, timestamp):
         warning("Invalid cookie signature: %r" % value)
         return None
 
-    # session age
+    # Validate session age. Session is expired or not
     now = int(datetime.now().strftime("%s"))
     if max_age is not None and int(timestamp) < now - max_age:
         warning("Expired cookie: %r" % value)
         return None
 
-    # decode value
+    # Decode cookie value
     try:
         return json.loads(encoded_value.decode("base64"))
     except Exception:
