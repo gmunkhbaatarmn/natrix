@@ -468,8 +468,10 @@ def test_Application_exception():
     ])
     testapp = webtest.TestApp(app)
 
+    def _error(*args, **kwargs):
+        pass
     natrix_error = natrix.error
-    natrix.error = lambda x: x
+    natrix.error = _error
     response = testapp.get("/", status=500)
     eq(response.status_int, 500)
     ok(response.normal_body.startswith("Traceback (most recent call last)"))
@@ -530,8 +532,11 @@ def test_route_error():
     response = testapp.get("/", status=404)
     eq(response.normal_body, "Custom error 404")
 
+    def _error(*args, **kwargs):
+        pass
+
     natrix_error = natrix.error
-    natrix.error = lambda x: x
+    natrix.error = _error
     response = testapp.get("/500", status=500)
     eq(response.normal_body, "Custom error 500")
     natrix.error = natrix_error
