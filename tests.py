@@ -25,7 +25,7 @@ def setup():
     # Temporary directory
     tempdir = tempfile.mkdtemp()
     open("%s/ok.html" % tempdir, "w+", "utf-8").write(
-        u"<b>ok хорошо {{- hello }}</b>\n"
+        u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
     )
     testbed.tempdir = tempdir
 
@@ -118,17 +118,17 @@ def test_Handler_render():
 
     response = testapp.get("/ok")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok</b>")
     eq(response.content_type, "text/html")
 
     response = testapp.get("/ok2")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok2</b>")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/ok3")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok3!</b>")
     eq(response.content_type, "text/plain")
 
     # default context
@@ -144,17 +144,17 @@ def test_Handler_render():
 
     response = testapp.get("/ok")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok!</b>")
     eq(response.content_type, "text/html")
 
     response = testapp.get("/ok2")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok2!</b>")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/ok3")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok3!</b>")
     eq(response.content_type, "text/plain")
 
     # default context as function
@@ -170,17 +170,17 @@ def test_Handler_render():
 
     response = testapp.get("/ok")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо/ok</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok/ok</b>")
     eq(response.content_type, "text/html")
 
     response = testapp.get("/ok2")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо/ok2</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok2/ok2</b>")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/ok3")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо!</b>")
+    eq(response.normal_body, "<b>ok хорошо /ok3!</b>")
     eq(response.content_type, "text/plain")
 
 
@@ -586,12 +586,12 @@ def test_app():
 
     response = testapp.get("/world")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.normal_body, "<b>ok хорошо /world</b>")
     eq(response.content_type, "text/html")
 
     response = testapp.get("/world2")
     eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо</b>")
+    eq(response.normal_body, "<b>ok хорошо /world2</b>")
     eq(response.content_type, "text/html")
 
 

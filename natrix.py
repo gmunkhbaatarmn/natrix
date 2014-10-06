@@ -81,6 +81,13 @@ class Request(object):
         if self.query:
             self.url += "?" + self.query
 
+        # unicode
+        self.host = _unicode(self.host)
+        self.path = _unicode(self.path)
+        self.domain = _unicode(self.domain)
+        self.url = _unicode(self.url)
+        self.query = _unicode(self.query)
+
     def __getitem__(self, name):
         " Example: self.request[:name] "
         value = ""
@@ -406,6 +413,8 @@ class Application(object):
     def get_handler(self, request_path, request_method):
         " Returns (handler, args) or (none, none) "
         for rule, handler in self.routes:
+            rule = _unicode(rule)
+
             " route method. route rule: /path/to#method "
             if re.search("#[a-z-]+$", rule):
                 rule, method = rule.rsplit("#", 1)
@@ -521,6 +530,15 @@ def cookie_signature(key, value, timestamp):
     signature.update("%s|%s" % (value, timestamp))
 
     return signature.hexdigest()
+
+
+def _unicode(string):
+    if isinstance(string, str):
+        try:
+            string = string.decode("utf-8")
+        except UnicodeDecodeError:
+            string = string
+    return string
 
 
 # Services
