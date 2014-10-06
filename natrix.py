@@ -37,10 +37,15 @@ class Request(object):
                 form = cgi.FieldStorage(fp=environ["wsgi.input"],
                                         environ=environ)
                 for k in form.keys():
-                    if not form[k].filename:
-                        self.params[k] = form[k].value
+                    if isinstance(form[k], list):
+                        field = form[k][0]  # only first item
                     else:
-                        self.params[k] = form[k]
+                        field = form[k]
+
+                    if not field.filename:
+                        self.params[k] = field.value
+                    else:
+                        self.params[k] = field
             else:
                 self.POST = parse_qs(environ["wsgi.input"].read(),
                                      keep_blank_values=1)
@@ -534,10 +539,7 @@ def cookie_signature(key, value, timestamp):
 
 def _unicode(string):
     if isinstance(string, str):
-        try:
-            string = string.decode("utf-8")
-        except UnicodeDecodeError:
-            string = string
+        string = string.decode("utf-8")
     return string
 
 

@@ -280,6 +280,11 @@ def test_Handler_request_upload():
     response = testapp.post("/1", {":method": "upload"}, upload_files=[f])
     eq(response.normal_body, ("FieldStorage('readme', 'readme.md')"))
 
+    f = ("readme", "readme.md", "Lorem ipsum dolot sit amet")
+    x = ("readme", "readme.txt", "Ut enim ad minim veniam, quis nostrud")
+    response = testapp.post("/1", {":method": "upload"}, upload_files=[f, x])
+    eq(response.normal_body, ("FieldStorage('readme', 'readme.md')"))
+
 
 def test_Handler_session():
     " Tests `x.session` in controller "
