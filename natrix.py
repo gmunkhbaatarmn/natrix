@@ -249,7 +249,7 @@ class Handler(object):
         self.session[":flash"] = value
 
     def render(self, template, *args, **kwargs):
-        self.response.headers["Content-Type"] = "text/html"
+        self.response.headers["Content-Type"] = "text/html; charset=UTF-8"
         self.response.write(self.render_string(template, *args, **kwargs))
         raise self.response.Sent
 
