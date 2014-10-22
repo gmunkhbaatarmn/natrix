@@ -17,7 +17,7 @@ from jinja2 import Environment, FileSystemLoader
 sys.path.append("./packages")
 info, taskqueue  # pyflakes fix
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 
 # Core classes
