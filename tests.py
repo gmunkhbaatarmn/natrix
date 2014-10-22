@@ -555,6 +555,7 @@ def test_Model():
 
     natrix.data.write("hello", 123)
     d = Data.find(name="hello")
+    eq(d.id, d.key().id())
     eq(d.name, "hello")
     eq(d.value, "123")
 
