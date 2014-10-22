@@ -553,6 +553,10 @@ class Model(db.Model):
 
         return q.get()
 
+    @property
+    def id(self):
+        return self.key().id()
+
 
 class Data(db.Model):
     " Data.write, Data.fetch "
