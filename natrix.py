@@ -87,11 +87,11 @@ class Request(object):
             self.url += "?" + self.query
 
         # unicode
-        self.host = _unicode(self.host)
-        self.path = _unicode(self.path)
-        self.domain = _unicode(self.domain)
-        self.url = _unicode(self.url)
-        self.query = _unicode(self.query)
+        self.host = ensure_unicode(self.host)
+        self.path = ensure_unicode(self.path)
+        self.domain = ensure_unicode(self.domain)
+        self.url = ensure_unicode(self.url)
+        self.query = ensure_unicode(self.query)
 
     def __getitem__(self, name):
         " Example: self.request[:name] "
@@ -133,11 +133,7 @@ class Response(object):
             self.headers["Content-Type"] = "application/json"
 
         text = "%s" % value
-
-        if not isinstance(text, str):
-            text = text.encode("utf-8")
-
-        self.body += text
+        self.body += ensure_ascii(text)
 
     @property
     def status(self):
@@ -279,8 +275,7 @@ class Handler(object):
         if permanent:
             code = 301
 
-        if isinstance(url, unicode):
-            url = url.encode("utf-8")
+        url = ensure_ascii(url)
 
         self.response.headers["Location"] = url
         self.response.code = code
@@ -418,7 +413,7 @@ class Application(object):
     def get_handler(self, request_path, request_method):
         " Returns (handler, args) or (none, none) "
         for rule, handler in self.routes:
-            rule = _unicode(rule)
+            rule = ensure_unicode(rule)
             rule = rule.replace("<int>", "(int:\d+)")
             rule = rule.replace("<string>", "([^/]+)")
 
@@ -560,9 +555,15 @@ def cookie_signature(key, value, timestamp):
     return signature.hexdigest()
 
 
-def _unicode(string):
+def ensure_unicode(string):
     if isinstance(string, str):
         string = string.decode("utf-8")
+    return string
+
+
+def ensure_ascii(string):
+    if isinstance(string, unicode):
+        string = string.encode("utf-8")
     return string
 
 
