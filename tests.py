@@ -547,6 +547,16 @@ def test_route_error():
     natrix.error = natrix_error
 
 
+def test_route_shortcut():
+    app = natrix.Application([
+        ("/(\d+)/<int>/<string>", lambda x, _, a, b: x.response(repr([a, b]))),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/123/456/hello")
+    eq(response.normal_body, "[456, u'hello']")
+
+
 # Services
 def test_Model():
     class Data(natrix.Model):

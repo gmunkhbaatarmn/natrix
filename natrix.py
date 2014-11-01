@@ -419,6 +419,8 @@ class Application(object):
         " Returns (handler, args) or (none, none) "
         for rule, handler in self.routes:
             rule = _unicode(rule)
+            rule = rule.replace("<int>", "(int:\d+)")
+            rule = rule.replace("<string>", "([^/]+)")
 
             " route method. route rule: /path/to#method "
             if re.search("#[a-z-]+$", rule):
@@ -433,10 +435,31 @@ class Application(object):
                 continue
 
             " match url "
-            if not re.search("^%s$" % rule, request_path):
+            # has any groups
+            re_groups = re.compile('''
+              \(        # `(` character. Marks group start
+              (
+                [^\)]+  # Until ")" character
+              )
+              \)        # `)` character. Marks group ends
+            ''', re.VERBOSE)
+
+            convert_rules = []
+            for group in re.findall(re_groups, rule):
+                if group.startswith("int:"):
+                    convert_rules.append(lambda x: int(x))
+                else:
+                    convert_rules.append(lambda x: x)
+
+            rule_simple = re.sub("\([a-z]+\:", "(", rule)
+            if not re.search("^%s$" % rule_simple, request_path):
                 continue
 
-            return handler, re.search("^%s$" % rule, request_path).groups()
+            args = list(re.search("^%s$" % rule_simple, request_path).groups())
+            for i, convert in enumerate(convert_rules):
+                args[i] = convert(args[i])
+
+            return handler, args
 
         return None, None
 
