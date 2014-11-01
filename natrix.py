@@ -103,11 +103,11 @@ class Request(object):
         if isinstance(value, list) and len(value) == 1:
             value = value[0]
 
-        if isinstance(value, str):
-            try:
-                value = value.decode("utf-8")
-            except UnicodeDecodeError:
-                value = value
+        try:
+            value = ensure_unicode(value)
+        except UnicodeDecodeError:
+            pass
+
         return value
 
 
@@ -132,8 +132,7 @@ class Response(object):
             value = json.dumps(value)
             self.headers["Content-Type"] = "application/json"
 
-        text = "%s" % value
-        self.body += ensure_ascii(text)
+        self.body += ensure_ascii("%s" % value)
 
     @property
     def status(self):
@@ -275,9 +274,7 @@ class Handler(object):
         if permanent:
             code = 301
 
-        url = ensure_ascii(url)
-
-        self.response.headers["Location"] = url
+        self.response.headers["Location"] = ensure_ascii(url)
         self.response.code = code
         self.response.body = ""
 
@@ -320,88 +317,86 @@ class Application(object):
 
         Returns an iterable with the response to return the client
         """
+        request = Request(environ)
+        response = Response()
+
         try:
-            request = Request(environ)
-            response = Response()
-
-            try:
-                " before "
-                before, args = self.get_before(request.path, request.method)
-                if before:
-                    x = Handler(request, response, self.config)
-                    try:
-                        before(x, *args)
-                    except response.Sent:
-                        pass
-
-                    # save session
-                    if x.session != x.session.initial:
-                        session_cookie = cookie_encode(x.config["session-key"],
-                                                       x.session)
-                        cookie_value = "session=%s; path=/;" % session_cookie
-
-                        cookie = Cookie.SimpleCookie()
-                        cookie.load(cookie_value)
-                        x.request.cookies = dict(cookie.items())
-                        x.response.headers["Set-Cookie"] = cookie_value
-
-                    request = x.request
-                    response = x.response
-
-                    if response.body or response.code != 200:
-                        start_response(response.status,
-                                       response.headers.items())
-                        return [response.body]
-
-                " handler "
+            " before "
+            before, args = self.get_before(request.path, request.method)
+            if before:
                 x = Handler(request, response, self.config)
-                x.not_found = self.get_error_404()
-                x.internal_error = self.get_error_500()
-
-                handler, args = self.get_handler(request.path, request.method)
-                if handler:
-                    try:
-                        handler(x, *args)
-                    except response.Sent:
-                        pass
-
-                    # save session
-                    if x.session != x.session.initial:
-                        cookie = cookie_encode(x.config["session-key"],
-                                               x.session)
-                        x.response.headers["Set-Cookie"] = \
-                            "session=%s; path=/;" % cookie
-
-                    request = x.request
-                    response = x.response
-                else:
-                    not_found = self.get_error_404()
-                    x.response.code = 404
-                    try:
-                        not_found(x)
-                    except response.Sent:
-                        pass
-                    response = x.response
-
-            except Exception as ex:
-                x = Handler(request, response, self.config)
-                x.exception = ex
-                x.response.code = 500
-
-                # logging to console
-                error("Error occured", exc_info=True)
-
-                internal_error = self.get_error_500()
                 try:
-                    internal_error(x)
+                    before(x, *args)
+                except response.Sent:
+                    pass
+
+                # save session
+                if x.session != x.session.initial:
+                    session_cookie = cookie_encode(x.config["session-key"],
+                                                   x.session)
+                    cookie_value = "session=%s; path=/;" % session_cookie
+
+                    cookie = Cookie.SimpleCookie()
+                    cookie.load(cookie_value)
+                    x.request.cookies = dict(cookie.items())
+                    x.response.headers["Set-Cookie"] = cookie_value
+
+                request = x.request
+                response = x.response
+
+                if response.body or response.code != 200:
+                    start_response(response.status,
+                                   response.headers.items())
+                    return [response.body]
+
+            " handler "
+            x = Handler(request, response, self.config)
+            x.not_found = self.get_error_404()
+            x.internal_error = self.get_error_500()
+
+            handler, args = self.get_handler(request.path, request.method)
+            if handler:
+                try:
+                    handler(x, *args)
+                except response.Sent:
+                    pass
+
+                # save session
+                if x.session != x.session.initial:
+                    cookie = cookie_encode(x.config["session-key"],
+                                           x.session)
+                    x.response.headers["Set-Cookie"] = \
+                        "session=%s; path=/;" % cookie
+
+                request = x.request
+                response = x.response
+            else:
+                not_found = self.get_error_404()
+                x.response.code = 404
+                try:
+                    not_found(x)
                 except response.Sent:
                     pass
                 response = x.response
 
-            start_response(response.status, response.headers.items())
-            return [response.body]
-        finally:
-            pass
+        except Exception as ex:
+            x = Handler(request, response, self.config)
+            x.exception = ex
+            x.response.code = 500
+
+            # logging to console
+            error("Error occured", exc_info=True)
+
+            internal_error = self.get_error_500()
+            try:
+                internal_error(x)
+            except response.Sent:
+                pass
+            response = x.response
+
+        start_response(response.status, response.headers.items())
+        return [response.body]
+        # threadsafe support needed
 
     def route(self, route):
         def func(handler):
