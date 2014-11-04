@@ -17,7 +17,7 @@ from jinja2 import Environment, FileSystemLoader
 sys.path.append("./packages")
 info, taskqueue  # pyflakes fix
 
-__version__ = "0.0.5"
+__version__ = "0.0.5+"
 
 
 # Core classes
@@ -393,6 +393,10 @@ class Application(object):
             except response.Sent:
                 pass
             response = x.response
+
+        # Response headers must be str not unicode
+        for k in response.headers:
+            response.headers[k] = ensure_ascii(response.headers[k])
 
         start_response(response.status, response.headers.items())
         return [response.body]

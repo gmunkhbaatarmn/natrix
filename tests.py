@@ -100,6 +100,21 @@ def test_Response():
     eq(response.body, "Hello")
 
 
+def test_Response_headers():
+    app = natrix.Application([])
+
+    @app.route(":before")
+    def before(x):
+        x.response.headers["X-Location"] = u"юникод"
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok2", status=404)
+    eq(response.headers["X-Location"], "юникод")
+    eq(response.status_int, 404)
+    eq(response.content_type, "text/plain")
+
+
 def test_Handler_render():
     def ok2(x):
         x.response(x.render_string("ok.html"))
