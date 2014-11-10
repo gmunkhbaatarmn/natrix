@@ -581,6 +581,20 @@ class Model(db.Model):
         return self.key().id()
 
 
+class Expand(db.Expando):
+    @classmethod
+    def find(cls, *args, **kwargs):
+        q = cls.all()
+        for k, v in kwargs.items():
+            q.filter("%s =" % k, v)
+
+        return q.get()
+
+    @property
+    def id(self):
+        return self.key().id()
+
+
 class Data(db.Model):
     " Data.write, Data.fetch "
     name = db.StringProperty()
