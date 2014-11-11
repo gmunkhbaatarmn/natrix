@@ -57,7 +57,22 @@ def test_Request():
     environ["REQUEST_METHOD"] = "POST"
     request = natrix.Request(environ)
     eq(request.method, "POST")
-    eq(request.path, "/test")
+
+
+def test_Request_headers():
+    app = natrix.Application([])
+
+    @app.route(":before")
+    def before(x):
+        x.response("%s" % x.request.headers["x-appengine-taskretrycount"])
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok2", headers={
+        "X-AppEngine-TaskRetryCount": "hello world",
+    })
+    eq(response.status_int, 200)
+    eq(response.body, "hello world")
 
 
 def test_Response():
@@ -575,6 +590,21 @@ def test_route_shortcut():
 # Services
 def test_Model():
     class Data(natrix.Model):
+        name = natrix.db.StringProperty()
+        value = natrix.db.TextProperty()
+
+    natrix.data.write("hello", 123)
+    d = Data.find(name="hello")
+    eq(d.id, d.key().id())
+    eq(d.name, "hello")
+    eq(d.value, "123")
+
+    eq(Data.find(name="earth"), None)
+    eq(Data.find(name="earth") or 234, 234)
+
+
+def test_Expando():
+    class Data(natrix.Expando):
         name = natrix.db.StringProperty()
         value = natrix.db.TextProperty()
 

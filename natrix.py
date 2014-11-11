@@ -29,6 +29,12 @@ class Request(object):
         self.query = environ["QUERY_STRING"]
         self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
 
+        self.headers = {}
+        for k, v in environ.iteritems():
+            if k.startswith("HTTP_"):
+                name = k[5:].lower().replace("_", "-")
+                self.headers[name] = v
+
         content_type = environ.get("HTTP_CONTENT_TYPE", "")
         content_type = content_type or environ.get("CONTENT_TYPE", "")
 
@@ -585,7 +591,7 @@ class Model(db.Model):
         return self.key().id()
 
 
-class Expand(db.Expando):
+class Expando(db.Expando):
     @classmethod
     def find(cls, *args, **kwargs):
         q = cls.all()
