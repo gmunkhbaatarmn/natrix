@@ -603,6 +603,68 @@ def test_Model():
     eq(Data.find(name="earth") or 234, 234)
 
 
+def test_Model_find_or_404():
+    class Data(natrix.Model):
+        name = natrix.db.StringProperty()
+        value = natrix.db.TextProperty()
+
+    def ok(x):
+        x.response.write("Result: ")
+        d = Data.find_or_404(name="hello")
+        x.response(d.value)
+
+    def ok2(x):
+        x.response.write("Result: ")
+        d = Data.find_or_404(name="earth")
+        x.response(d.value)
+
+    app = natrix.Application([
+        (":error-404", lambda x: x.response("NOT FOUND")),
+        ("/ok", ok),
+        ("/ok2", ok2),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "Result: 123")
+
+    response = testapp.get("/ok2", status=404)
+    eq(response.status_int, 404)
+    eq(response.normal_body, "Result: NOT FOUND")
+
+
+def test_Model_get_or_404():
+    class Data(natrix.Model):
+        name = natrix.db.StringProperty()
+        value = natrix.db.TextProperty()
+
+    def ok(x):
+        x.response.write("Result: ")
+        d = Data.get_or_404(Data.all()[0].id)
+        x.response(d.value)
+
+    def ok2(x):
+        x.response.write("Result: ")
+        d = Data.get_or_404(123456789)
+        x.response(d.value)
+
+    app = natrix.Application([
+        (":error-404", lambda x: x.response("NOT FOUND")),
+        ("/ok", ok),
+        ("/ok2", ok2),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/ok")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "Result: 123")
+
+    response = testapp.get("/ok2", status=404)
+    eq(response.status_int, 404)
+    eq(response.normal_body, "Result: NOT FOUND")
+
+
 def test_Expando():
     class Data(natrix.Expando):
         name = natrix.db.StringProperty()

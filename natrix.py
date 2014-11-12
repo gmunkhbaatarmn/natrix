@@ -214,6 +214,9 @@ class Response(object):
     class Sent(Exception):
         " Response sent "
 
+    class Sent404(Exception):
+        " Response sent "
+
 
 class Handler(object):
     def __init__(self, request, response, config):
@@ -364,7 +367,15 @@ class Application(object):
             if handler:
                 try:
                     handler(x, *args)
-                except response.Sent:
+                except Response.Sent404:
+                    not_found = self.get_error_404()
+                    x.response.code = 404
+                    try:
+                        not_found(x)
+                    except response.Sent:
+                        pass
+                    response = x.response
+                except Response.Sent:
                     pass
 
                 # save session
@@ -577,7 +588,11 @@ def ensure_ascii(string):
 
 
 # Services
-class Model(db.Model):
+class ModelMixin(object):
+    @property
+    def id(self):
+        return self.key().id()
+
     @classmethod
     def find(cls, *args, **kwargs):
         q = cls.all()
@@ -586,23 +601,27 @@ class Model(db.Model):
 
         return q.get()
 
-    @property
-    def id(self):
-        return self.key().id()
-
-
-class Expando(db.Expando):
     @classmethod
-    def find(cls, *args, **kwargs):
-        q = cls.all()
-        for k, v in kwargs.items():
-            q.filter("%s =" % k, v)
+    def find_or_404(cls, *args, **kwargs):
+        entity = cls.find(*args, **kwargs)
+        if not entity:
+            raise Response.Sent404
+        return entity
 
-        return q.get()
+    @classmethod
+    def get_or_404(cls, id):
+        entity = cls.get_by_id(id)
+        if not entity:
+            raise Response.Sent404
+        return entity
 
-    @property
-    def id(self):
-        return self.key().id()
+
+class Model(db.Model, ModelMixin):
+    pass
+
+
+class Expando(db.Model, ModelMixin):
+    pass
 
 
 class Data(db.Model):
