@@ -277,7 +277,7 @@ class Handler(object):
         context_dict.update(context or {})
         context_dict.update(kwargs)
 
-        env.filters.update(context)
+        env.filters.update(context_dict)
 
         return env.get_template(template).render(context_dict)
 
