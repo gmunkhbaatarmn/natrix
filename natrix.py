@@ -438,6 +438,8 @@ class Application(object):
             rule = ensure_unicode(rule)
             rule = rule.replace("<int>", "(int:\d+)")
             rule = rule.replace("<string>", "([^/]+)")
+            for k, v in self.config.get("route-shortcut", {}).items():
+                rule = rule.replace(k, v)
 
             " route method. route rule: /path/to#method "
             if re.search("#[a-z-]+$", rule):
