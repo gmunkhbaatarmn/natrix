@@ -580,11 +580,27 @@ def test_route_error():
 def test_route_shortcut():
     app = natrix.Application([
         ("/(\d+)/<int>/<string>", lambda x, _, a, b: x.response(repr([a, b]))),
+        ("/(\d+)/{custom}", lambda x, _, a: x.response(repr(a))),
     ])
+    app.config["route-shortcut"] = {
+        "{custom}": "(abc|def)",
+    }
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/123/456/hello")
     eq(response.normal_body, "[456, u'hello']")
+
+    response = testapp.get("/123/abc")
+    eq(response.normal_body, "u'abc'")
+
+    response = testapp.get("/123/def")
+    eq(response.normal_body, "u'def'")
+
+    response = testapp.get("/123/xyz", status=404)
+    eq(response.status_int, 404)
+
+    response = testapp.get("/123/abcd", status=404)
+    eq(response.status_int, 404)
 
 
 # Services
