@@ -277,6 +277,8 @@ class Handler(object):
         context_dict.update(context or {})
         context_dict.update(kwargs)
 
+        env.filters.update(context)
+
         return env.get_template(template).render(context_dict)
 
     def redirect(self, url, permanent=False, code=302, delay=0):
