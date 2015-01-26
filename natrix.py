@@ -1,3 +1,4 @@
+import os
 import re
 import cgi
 import sys
@@ -266,12 +267,15 @@ class Handler(object):
             "json": json,
             "dir": dir,
             "int": int,
+            "max": max,
+            "min": min,
             "now": datetime.now(),
 
             "debug": self.config.get("debug"),
             "request": self.request,
             "session": self.session,
             "flash": self.flash,
+            "environ": os.environ,
         }
         context_dict.update(self.config["context"](self))
         context_dict.update(context or {})
