@@ -438,7 +438,9 @@ class Application(object):
             rule = ensure_unicode(rule)
             rule = rule.replace("<int>", "(int:\d+)")
             rule = rule.replace("<string>", "([^/]+)")
-            for k, v in self.config.get("route-shortcut", {}).items():
+            shortcuts = self.config.get("route-shortcut", {})
+
+            for k, v in sorted(shortcuts.items(), key=lambda x: - len(x[1])):
                 rule = rule.replace(k, v)
 
             " route method. route rule: /path/to#method "
