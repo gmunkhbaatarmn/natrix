@@ -624,7 +624,7 @@ class Model(db.Model, ModelMixin):
     pass
 
 
-class Expando(db.Model, ModelMixin):
+class Expando(db.Expando, ModelMixin):
     pass
 
 
