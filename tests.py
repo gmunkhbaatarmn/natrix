@@ -58,6 +58,12 @@ def test_Request():
     request = natrix.Request(environ)
     eq(request.method, "POST")
 
+    # unicode
+    environ["PATH_INFO"] = "/\xf4\xee"
+    environ["REQUEST_METHOD"] = "POST"
+    request = natrix.Request(environ)
+    eq(request.method, "POST")
+
 
 def test_Request_headers():
     app = natrix.Application([])
@@ -263,9 +269,19 @@ def test_Handler_request():
     ])
     testapp = webtest.TestApp(app)
 
+    response = testapp.get("/%F4%EE", status=404)
+    eq(response.status_int, 404)
+    eq(response.normal_body, "Error 404")
+    eq(response.content_type, "text/plain")
+
     response = testapp.get("/?hello=%E3")
     eq(response.status_int, 200)
     eq(response.normal_body, "\xe3")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/?hello=юникод")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "юникод")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/?hello=world")
@@ -741,4 +757,10 @@ def test_google_appengine_shortcuts():
 
 if __name__ == "__main__":
     testbed = None
-    nose.main(argv=[__file__, "--stop"])
+    argv = [
+        __file__,       # run tests of current file
+        "--stop",       # stop on first fail
+        "--nocapture",  # `print` immediately. (useful for debugging)
+        "--quiet",      # disable dotted progress indicator
+    ]
+    nose.main(argv=argv)

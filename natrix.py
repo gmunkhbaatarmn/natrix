@@ -18,7 +18,7 @@ from jinja2 import Environment, FileSystemLoader
 sys.path.append("./packages")
 info, taskqueue  # pyflakes fix
 
-__version__ = "0.0.7"
+__version__ = "0.0.7+"
 
 
 # Core classes
@@ -110,10 +110,7 @@ class Request(object):
         if isinstance(value, list) and len(value) == 1:
             value = value[0]
 
-        try:
-            value = ensure_unicode(value)
-        except UnicodeDecodeError:
-            pass
+        value = ensure_unicode(value)
 
         return value
 
@@ -587,7 +584,10 @@ def cookie_signature(key, value, timestamp):
 
 def ensure_unicode(string):
     if isinstance(string, str):
-        string = string.decode("utf-8")
+        try:
+            string = string.decode("utf")
+        except UnicodeDecodeError:
+            pass
     return string
 
 
