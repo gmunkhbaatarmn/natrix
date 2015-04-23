@@ -89,6 +89,8 @@ class Request(object):
         self.host = environ.get("HTTP_HOST", "")
         self.domain = self.host.split(":", 1)[0]
 
+        # idea: x.request.scheme
+        self.path_url = "http://%s%s" % (self.host, self.path)
         self.url = self.host + self.path
         if self.query:
             self.url += "?" + self.query
