@@ -229,6 +229,7 @@ def test_Handler_redirect():
         ("/4", lambda x: x.redirect("http://github.com/юникод")),
         ("/5", lambda x: x.redirect(u"http://github.com/юникод")),
         ("/6-юникод", lambda x: x.redirect("ok")),
+        ("/7#post", lambda x: x.redirect()),
     ])
     testapp = webtest.TestApp(app)
 
@@ -257,6 +258,9 @@ def test_Handler_redirect():
 
     response = testapp.get("/6-юникод")
     eq(response.location, "ok")
+
+    response = testapp.post("/7")
+    eq(response.location, "/7")
 
 
 def test_Handler_request():
