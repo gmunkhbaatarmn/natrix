@@ -282,7 +282,11 @@ class Handler(object):
 
         return env.get_template(template).render(context_dict)
 
-    def redirect(self, url, permanent=False, code=302, delay=0):
+    def redirect(self, url=None, permanent=False, code=302, delay=0):
+        if not url:
+            # idea: also support path with query
+            url = self.request.path
+
         if permanent:
             code = 301
 
