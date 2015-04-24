@@ -5,5 +5,5 @@ test:
 	@coverage erase
 
 init:
-	@pip install flake8 coverage nose
+	@pip install flake8 coverage nose webtest
 	@pip install appengine-sdk
