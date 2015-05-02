@@ -1,43 +1,41 @@
 # coding: utf-8
+import dev_appserver
+dev_appserver.fix_sys_path()
 import nose
 import shutil
-import natrix
 import webtest
 import tempfile
+import natrix
 from codecs import open
 from nose.tools import eq_ as eq, ok_ as ok, timed
 from google.appengine.ext.testbed import Testbed
 
 
 def setup():
-    global testbed
-
     # Create an instance of Testbed class
-    testbed = Testbed()
+    nose.testbed = Testbed()
 
     # Activate the testbed, which prepares the services stub for use
-    testbed.activate()
+    nose.testbed.activate()
 
     # Declare which stubs want to use
-    testbed.init_datastore_v3_stub()
-    testbed.init_memcache_stub()
+    nose.testbed.init_datastore_v3_stub()
+    nose.testbed.init_memcache_stub()
 
     # Temporary directory
     tempdir = tempfile.mkdtemp()
     open("%s/ok.html" % tempdir, "w+", "utf-8").write(
         u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
     )
-    testbed.tempdir = tempdir
+    nose.tempdir = tempdir
 
 
 def teardown():
-    global testbed
-
     # Clean up temporary dir
-    shutil.rmtree(testbed.tempdir)
+    shutil.rmtree(nose.tempdir)
 
     # Restores the original stubs
-    testbed.deactivate()
+    nose.testbed.deactivate()
 
 
 # Core classes
@@ -148,7 +146,7 @@ def test_Handler_render():
         ("/ok2", ok2),
         ("/ok3", ok3),
     ])
-    app.config["template-path"] = testbed.tempdir
+    app.config["template-path"] = nose.tempdir
 
     testapp = webtest.TestApp(app)
 
@@ -175,7 +173,7 @@ def test_Handler_render():
     ], {
         "context": {"hello": "!"},
     })
-    app.config["template-path"] = testbed.tempdir
+    app.config["template-path"] = nose.tempdir
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
@@ -201,7 +199,7 @@ def test_Handler_render():
     ], {
         "context": lambda self: {"hello": self.request.path},
     })
-    app.config["template-path"] = testbed.tempdir
+    app.config["template-path"] = nose.tempdir
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
@@ -539,7 +537,7 @@ def test_route_before():
     app = natrix.Application([
         ("/ok", lambda x: x.response("OK")),
     ])
-    app.config["template-path"] = testbed.tempdir
+    app.config["template-path"] = nose.tempdir
 
     @app.route(":before")
     def ok(x):
@@ -729,7 +727,7 @@ def test_data():
 
 
 def test_app():
-    natrix.app.config["template-path"] = testbed.tempdir
+    natrix.app.config["template-path"] = nose.tempdir
     testapp = webtest.TestApp(natrix.app)
 
     natrix.route("/world")(lambda x: x.render("ok.html"))
@@ -760,7 +758,6 @@ def test_google_appengine_shortcuts():
 
 
 if __name__ == "__main__":
-    testbed = None
     argv = [
         __file__,       # run tests of current file
         "--stop",       # stop on first fail
