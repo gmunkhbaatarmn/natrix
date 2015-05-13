@@ -436,6 +436,9 @@ class Application(object):
 
     def route(self, route):
         def func(handler):
+            handler.is_controller = True
+            handler.route = route
+
             self.routes.append((route, handler))
             return handler
 
@@ -523,6 +526,9 @@ class Application(object):
                 return handler
 
         return _internal_error
+
+    def include(self, controller):
+        __import__("controllers.%s" % controller)
 
 
 # Helpers
