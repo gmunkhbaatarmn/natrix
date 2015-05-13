@@ -2,8 +2,9 @@ import os
 import re
 import cgi
 import sys
-import json
 import hmac
+import json
+import time
 import Cookie
 import hashlib
 import traceback
@@ -633,12 +634,64 @@ class ModelMixin(object):
         return entity
 
 
-class Model(db.Model, ModelMixin):
-    pass
+class Model(ModelMixin, db.Model):
+    def delete(self, complete=False):
+        super(Model, self).delete()
+
+        if complete is False:
+            return
+
+        while self.__class__.get_by_id(self.id) is not None:
+            time.sleep(0.01)
+
+    def save(self, complete=False):
+        super(Model, self).save()
+
+        if complete is False:
+            return
+
+        while True:
+            entity = self.__class__.get_by_id(self.id)
+            updated = True
+            for field in self.fields().keys():
+                if getattr(self, field) != getattr(entity, field):
+                    updated = False
+
+            if updated is False:
+                time.sleep(0.01)
+                warning("Not yet saved")
+            else:
+                break
 
 
-class Expando(db.Expando, ModelMixin):
-    pass
+class Expando(ModelMixin, db.Expando):
+    def delete(self, complete=False):
+        super(Model, self).delete()
+
+        if complete is False:
+            return
+
+        while self.__class__.get_by_id(self.id) is not None:
+            time.sleep(0.01)
+
+    def save(self, complete=False):
+        super(Model, self).save()
+
+        if complete is False:
+            return
+
+        while True:
+            entity = self.__class__.get_by_id(self.id)
+            updated = True
+            for field in self.fields().keys():
+                if getattr(self, field) != getattr(entity, field):
+                    updated = False
+
+            if updated is False:
+                time.sleep(0.01)
+                warning("Not yet saved")
+            else:
+                break
 
 
 class Data(db.Model):
