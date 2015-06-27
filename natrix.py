@@ -7,6 +7,7 @@ import json
 import time
 import Cookie
 import hashlib
+import importlib
 import traceback
 from cgi import parse_qs
 from time import sleep
@@ -19,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader
 sys.path.append("./packages")
 info, taskqueue  # pyflakes fix
 
-__version__ = "0.0.8"
+__version__ = "0.0.8+"
 
 
 # Core classes
@@ -30,6 +31,7 @@ class Request(object):
         self.path = environ["PATH_INFO"]
         self.query = environ["QUERY_STRING"]
         self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
+        self.flag = None
 
         self.headers = {}
         for k, v in environ.iteritems():
@@ -341,11 +343,13 @@ class Application(object):
 
         try:
             " before "
-            before, args = self.get_before(request.path, request.method)
-            if before:
+            for rule, _, before_handler in self.routes:
+                if rule != ":before":
+                    continue
+
                 x = Handler(request, response, self.config)
                 try:
-                    before(x, *args)
+                    before_handler(x)
                 except response.Sent:
                     pass
 
@@ -434,19 +438,28 @@ class Application(object):
         return [response.body]
         # threadsafe support needed
 
-    def route(self, route):
+    def route(self, route, handler_path=None, order=0):
         def func(handler):
             handler.is_controller = True
             handler.route = route
+            self.routes.append((route, order, handler))
+            self.routes = sorted(self.routes)
 
-            self.routes.append((route, handler))
             return handler
+
+        # Usage: route("/route-to-url", "controller.path")
+        if handler_path:  # controller path to function
+            module_name, handler_name = handler_path.split(".")
+            module = importlib.import_module("controllers.%s" % module_name)
+            handler = getattr(module, handler_name)
+
+            return func(handler)
 
         return func
 
     def get_handler(self, request_path, request_method):
         " Returns (handler, args) or (none, none) "
-        for rule, handler in self.routes:
+        for rule, _, handler in self.routes:
             rule = ensure_unicode(rule)
             rule = rule.replace("<int>", "(int:\d+)")
             rule = rule.replace("<string>", "([^/]+)")
@@ -496,19 +509,12 @@ class Application(object):
 
         return None, None
 
-    def get_before(self, request_path, request_method):
-        for rule, handler in self.routes:
-            if rule == ":before":
-                return handler, tuple([])
-
-        return None, None
-
     def get_error_404(self):
         def _not_found(x):
             x.response.code = 404
             x.response.body = "Error 404"
 
-        for rule, handler in self.routes:
+        for rule, _, handler in self.routes:
             if rule == ":error-404":
                 return handler
 
@@ -521,7 +527,7 @@ class Application(object):
             x.response.headers["Content-Type"] = "text/plain;error"
             x.response.body = "".join(lines)
 
-        for rule, handler in self.routes:
+        for rule, _, handler in self.routes:
             if rule == ":error-500":
                 return handler
 
