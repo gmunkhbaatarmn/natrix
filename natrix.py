@@ -324,7 +324,12 @@ class Application(object):
     Returns WSGI app function
     """
     def __init__(self, routes=None, config=None):
-        self.routes = routes or []
+        self.routes = []
+        for r in (routes or []):
+            if len(r) == 2:
+                r = (r[0], 0, r[1])
+            self.routes.append(r)
+
         self.config = config or {}  # none to dict
 
     def __call__(self, environ, start_response):
