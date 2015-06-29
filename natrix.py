@@ -583,30 +583,46 @@ def cookie_decode(key, value, max_age=None):
     # Cookie must be formatted in `data|timestamp|signature`
     if not value or value.count("|") != 2:
         return None
+    # endfold
 
     encoded_value, timestamp, signature = value.split("|")
 
-    # Validate signature
+    # Validate: signature
     if signature != cookie_signature(key, encoded_value, timestamp):
         warning("Invalid cookie signature: %r" % value)
         return None
 
-    # Validate session age. Session is expired or not
+    # Validate: session age. Session is expired or not
     now = int(datetime.now().strftime("%s"))
     if max_age is not None and int(timestamp) < now - max_age:
         warning("Expired cookie: %r" % value)
         return None
+    # endfold
 
-    # Decode cookie value
+    # Decode: must be a correct base64
     try:
-        return json.loads(encoded_value.decode("base64"))
-    except Exception:
-        warning("Cookie value not decoded: %r" % encoded_value)
+        json_value = encoded_value.decode("base64")
+    except:
+        warning("Incorrect base64 string: %r" % encoded_value, exc_info=True)
+        return None
+
+    # Decode: must be a correct json
+    try:
+        return json.loads(json_value)
+    except:
+        warning("Incorrect json string: %r" % json_value, exc_info=True)
         return None
 
 
 def cookie_signature(key, value, timestamp):
-    " Generates an HMAC signature "
+    """ Generates an HMAC signature
+
+    key - key string used in cookie signature
+    value - value to be signed
+    timestamp - signature timestamp
+
+    Returns signed string
+    """
     signature = hmac.new(key, digestmod=hashlib.sha1)
     signature.update("%s|%s" % (value, timestamp))
 
@@ -624,7 +640,7 @@ def ensure_unicode(string):
 
 def ensure_ascii(string):
     if isinstance(string, unicode):
-        string = string.encode("utf-8")
+        string = string.encode("utf")
     return string
 
 
@@ -633,14 +649,45 @@ class ModelMixin(object):
     @property
     def id(self):
         return self.key().id()
+    # endfold
+
+    def delete(self, complete=False):
+        super(Model, self).delete()
+
+        if complete is False:
+            return
+
+        while self.__class__.get_by_id(self.id):
+            time.sleep(0.01)
+
+    def save(self, complete=False):
+        super(ModelMixin, self).save()
+
+        if complete is False:
+            return
+
+        while True:
+            entity = self.__class__.get_by_id(self.id)
+            for field in self.fields().keys():
+                old_value = getattr(self, field)
+                new_value = getattr(entity, field)
+
+                if old_value != new_value:
+                    break  # for loop
+            else:
+                break  # while loop
+
+            # little delay
+            time.sleep(0.01)
+    # endfold
 
     @classmethod
     def find(cls, *args, **kwargs):
-        q = cls.all()
-        for k, v in kwargs.items():
-            q.filter("%s =" % k, v)
+        query = cls.all()
+        for name, value in kwargs.items():
+            query.filter("%s =" % name, value)
 
-        return q.get()
+        return query.get()
 
     @classmethod
     def find_or_404(cls, *args, **kwargs):
@@ -658,63 +705,11 @@ class ModelMixin(object):
 
 
 class Model(ModelMixin, db.Model):
-    def delete(self, complete=False):
-        super(Model, self).delete()
-
-        if complete is False:
-            return
-
-        while self.__class__.get_by_id(self.id) is not None:
-            time.sleep(0.01)
-
-    def save(self, complete=False):
-        super(Model, self).save()
-
-        if complete is False:
-            return
-
-        while True:
-            entity = self.__class__.get_by_id(self.id)
-            updated = True
-            for field in self.fields().keys():
-                if getattr(self, field) != getattr(entity, field):
-                    updated = False
-
-            if updated is False:
-                time.sleep(0.01)
-                warning("Not yet saved")
-            else:
-                break
+    pass
 
 
 class Expando(ModelMixin, db.Expando):
-    def delete(self, complete=False):
-        super(Model, self).delete()
-
-        if complete is False:
-            return
-
-        while self.__class__.get_by_id(self.id) is not None:
-            time.sleep(0.01)
-
-    def save(self, complete=False):
-        super(Model, self).save()
-
-        if complete is False:
-            return
-
-        while True:
-            entity = self.__class__.get_by_id(self.id)
-            updated = True
-            for field in self.fields().keys():
-                if getattr(self, field) != getattr(entity, field):
-                    updated = False
-
-            if updated is False:
-                time.sleep(0.01)
-                warning("Not yet saved")
-            else:
-                break
+    pass
 
 
 class Data(db.Model):
@@ -729,10 +724,12 @@ class Data(db.Model):
         value = memcache.get(name)
         if value:
             return json.loads(value)
-        c = cls.all().filter("name =", name).get()
-        if c:
-            memcache.set(name, c.value)
-            return json.loads(c.value)
+
+        entity = cls.all().filter("name =", name).get()
+        if entity:
+            memcache.set(name, entity.value)
+            return json.loads(entity.value)
+
         return default
 
     @classmethod
@@ -740,9 +737,9 @@ class Data(db.Model):
         data = json.dumps(value)
         memcache.set(name, data)
 
-        c = cls.all().filter("name =", name).get() or cls(name=name)
-        c.value = data
-        c.save()
+        entity = cls.all().filter("name =", name).get() or cls(name=name)
+        entity.value = data
+        entity.save()
 
     @classmethod
     def erase(cls, name):

@@ -1,17 +1,18 @@
 # coding: utf-8
-import dev_appserver
-dev_appserver.fix_sys_path()
 import nose
+import natrix
 import shutil
 import webtest
 import tempfile
-import natrix
+import dev_appserver
 from codecs import open
 from nose.tools import eq_ as eq, ok_ as ok, timed
 from google.appengine.ext.testbed import Testbed
 
 
 def setup():
+    dev_appserver.fix_sys_path()
+
     # Create an instance of Testbed class
     nose.testbed = Testbed()
 
@@ -427,7 +428,7 @@ def test_Handler_session_negative():
 
     # invalid cookie signature
     natrix_warning = natrix.warning
-    natrix.warning = lambda x: x
+    natrix.warning = lambda x, **kwargs: (x, kwargs)
     testapp.reset()
     testapp.set_cookie("session", "eyIxIjogMn0=|2111666111|wronghash")
     response = testapp.get("/1")
@@ -442,7 +443,7 @@ def test_Handler_session_negative():
 
     value = "abc|2111666111|12b9b544449e8ef1866f9df1762d4ae3f5a585a9"
     natrix_warning = natrix.warning
-    natrix.warning = lambda x: x
+    natrix.warning = lambda x, **kwargs: (x, kwargs)
     natrix.cookie_decode("random-string", value)
     natrix.warning = natrix_warning
 
@@ -635,6 +636,9 @@ def test_Model():
 
     eq(Data.find(name="earth"), None)
     eq(Data.find(name="earth") or 234, 234)
+
+    d = Data(name="hello", value="world")
+    d.save(complete=True)
 
 
 def test_Model_find_or_404():
