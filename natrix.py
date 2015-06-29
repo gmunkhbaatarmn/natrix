@@ -1,24 +1,24 @@
 import os
 import re
-import cgi
 import sys
 import hmac
 import json
-import time
+import jinja2
 import Cookie
 import hashlib
 import importlib
 import traceback
-from cgi import parse_qs
+from cgi import FieldStorage, parse_qs
 from time import sleep
 from logging import info, warning, error
 from datetime import datetime
 from google.appengine.ext import db
 from google.appengine.api import memcache, taskqueue
-from jinja2 import Environment, FileSystemLoader
 
 sys.path.append("./packages")
-info, taskqueue  # pyflakes fix
+
+info       # for `from natrix import info`
+taskqueue  # for `from natrix import taskqueue`
 
 __version__ = "0.0.9"
 
@@ -44,8 +44,7 @@ class Request(object):
 
         if "wsgi.input" in environ:
             if content_type.startswith("multipart/form-data"):
-                form = cgi.FieldStorage(fp=environ["wsgi.input"],
-                                        environ=environ)
+                form = FieldStorage(fp=environ["wsgi.input"], environ=environ)
                 for k in form.keys():
                     if isinstance(form[k], list):
                         field = form[k][0]  # only first item
@@ -266,10 +265,10 @@ class Handler(object):
         loader = self.config.get("template-loader")
         if not loader:
             template_path = self.config.get("template-path") or "./templates"
-            loader = FileSystemLoader(template_path)
+            loader = jinja2.FileSystemLoader(template_path)
 
-        env = Environment(loader=loader, line_comment_prefix="#:",
-                          extensions=["jinja2.ext.loopcontrols"])
+        env = jinja2.Environment(loader=loader, line_comment_prefix="#:",
+                                 extensions=["jinja2.ext.loopcontrols"])
 
         context_dict = {
             "json": json,
@@ -658,7 +657,7 @@ class ModelMixin(object):
             return
 
         while self.__class__.get_by_id(self.id):
-            time.sleep(0.01)
+            sleep(0.01)
 
     def save(self, complete=False):
         super(ModelMixin, self).save()
@@ -678,7 +677,7 @@ class ModelMixin(object):
                 break  # while loop
 
             # little delay
-            time.sleep(0.01)
+            sleep(0.01)
     # endfold
 
     @classmethod
