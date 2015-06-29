@@ -77,11 +77,11 @@ class Request(object):
                 info("Invalid cookie: %s" % c)
         self.cookies = dict(cookie.items())
 
-        # Is X-Requested-With header present and equal to ``XMLHttpRequest``?
-        # Note: this isn't set by every XMLHttpRequest request, it is only set
-        # if you are using a Javascript library that sets it (or you set the
+        # is x-requested-with header present and equal to ``xmlhttprequest``?
+        # note: this isn't set by every xmlhttprequest request, it is only set
+        # if you are using a javascript library that sets it (or you set the
         # header yourself manually).
-        # Currently Prototype and jQuery are known to set this header.
+        # currently prototype and jquery are known to set this header.
         if environ.get("HTTP_X_REQUESTED_WITH", "") == "XMLHttpRequest":
             self.is_xhr = True
         else:
@@ -146,6 +146,7 @@ class Response(object):
     @property
     def status(self):
         http_status = {
+            # 1xx
             100: "100 Continue",
             101: "101 Switching Protocols",
             102: "102 Processing",
@@ -210,6 +211,7 @@ class Response(object):
             506: "506 Variant Also Negotiates",
             510: "501 Not Extended",
             511: "511 Network Authentication Required",
+            # endfold
         }
 
         return http_status[self.code]
@@ -261,8 +263,12 @@ class Handler(object):
         raise self.response.Sent
 
     def render_string(self, template, context=None, **kwargs):
-        template_path = self.config.get("template-path") or "./templates"
-        env = Environment(loader=FileSystemLoader(template_path),
+        loader = self.config.get("template-loader")
+        if not loader:
+            template_path = self.config.get("template-path") or "./templates"
+            loader = FileSystemLoader(template_path)
+
+        env = Environment(loader=loader, line_comment_prefix="#:",
                           extensions=["jinja2.ext.loopcontrols"])
 
         context_dict = {
