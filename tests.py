@@ -83,12 +83,12 @@ def test_Request_headers():
 
 def test_Response():
     " Tests `natrix.Response` class individually "
-    # response defaults
+    # Response defaults
     response = natrix.Response()
     eq(response.code, 200)
     eq(response.headers, {"Content-Type": "text/plain; charset=utf-8"})
 
-    # response.status (status line)
+    # Response.status (status line)
     eq(natrix.Response(code=200).status, "200 OK")
     eq(natrix.Response(code=201).status, "201 Created")
     eq(natrix.Response(code=202).status, "202 Accepted")
@@ -96,7 +96,7 @@ def test_Response():
     eq(natrix.Response(code=302).status, "302 Found")
     eq(natrix.Response(code=404).status, "404 Not Found")
 
-    # response.write
+    # Response.write
     response = natrix.Response()
     response.write("Hello")
     eq(response.body, "Hello")
@@ -105,7 +105,7 @@ def test_Response():
     response.write([1, 2], encode="json")
     eq(response.body, "[1, 2]")
 
-    # response(...)
+    # Response(...)
     response = natrix.Response()
     try:
         response("Hello")
@@ -233,34 +233,57 @@ def test_Handler_redirect():
     ])
     testapp = webtest.TestApp(app)
 
+    # 0. x.redirect(/2)
     response = testapp.get("/0")
     eq(response.location, "/2")
     eq(response.status_int, 302)
     eq(response.normal_body, "")
     eq(response.content_type, "text/plain")
 
+    # 1. x.redirect(external, delay=0.2)
     response = timed(0.3)(lambda: testapp.get("/1"))()
     eq(response.location, "http://github.com/")
     eq(response.status_int, 302)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
+    # 2. x.redirect(external, code=301)
     response = testapp.get("/2")
     eq(response.location, "http://github.com/")
     eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
+    # 3. x.redirect(external, permanent=True)
     response = testapp.get("/3")
     eq(response.location, "http://github.com/")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
+    # 4. x.redirect(external/юникод)
     response = testapp.get("/4")
     eq(response.location, "http://github.com/юникод")
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
+    # 5. x.redirect(external/юникод)
     response = testapp.get("/5")
     eq(response.location, "http://github.com/юникод")
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
+    # 6. x.redirect(any)
     response = testapp.get("/6-юникод")
     eq(response.location, "ok")
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
+    # 7. x.redirect()
     response = testapp.post("/7")
     eq(response.location, "/7")
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
 
 
 def test_Handler_request():
