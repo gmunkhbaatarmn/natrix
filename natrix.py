@@ -115,18 +115,14 @@ class Request(object):
         # endfold
 
     def __getitem__(self, name):
-        " Example: self.request[:name] "
-        value = ""
-        if name in self.params:
-            value = self.params.get(name)
+        " Usage: x.request[name] "
+        value = self.params.get(name, "")
 
         # not list, individual value
-        if isinstance(value, list) and len(value) == 1:
+        if isinstance(value, list):
             value = value[0]
 
-        value = ensure_unicode(value)
-
-        return value
+        return ensure_unicode(value)
 
 
 class Response(object):
