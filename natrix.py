@@ -111,6 +111,9 @@ class Request(object):
         # Field: query     | x=y&z
         self.query = ensure_unicode(environ["QUERY_STRING"])
 
+        # Field: host_url  | http://foo.example.com:8000/
+        self.host_url = u"%s://%s/" % (self.scheme, self.host)
+
         # Field: path_url  | http://foo.example.com:8000/path/page.html
         self.path_url = u"%s://%s%s" % (self.scheme, self.host, self.path)
 
