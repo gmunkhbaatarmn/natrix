@@ -43,8 +43,9 @@ class Request(object):
         content_type = environ.get("HTTP_CONTENT_TYPE", "")
         content_type = content_type or environ.get("CONTENT_TYPE", "")
         if "wsgi.input" in environ:
+            wsgi_input = environ["wsgi.input"]
             if content_type.startswith("multipart/form-data"):
-                form = FieldStorage(fp=environ["wsgi.input"], environ=environ)
+                form = FieldStorage(fp=wsgi_input, environ=environ)
                 for k in form.keys():
                     if isinstance(form[k], list):
                         field = form[k][0]  # only first item
@@ -56,9 +57,8 @@ class Request(object):
                     else:
                         self.params[k] = field
             else:
-                self.POST = parse_qs(environ["wsgi.input"].read(),
-                                     keep_blank_values=1)
-                self.params.update(self.POST)
+                params = parse_qs(wsgi_input.read(), keep_blank_values=1)
+                self.params.update(params)
 
         # Field: method
         self.method = environ["REQUEST_METHOD"].upper()
