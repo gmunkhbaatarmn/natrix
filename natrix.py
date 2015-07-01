@@ -20,28 +20,36 @@ sys.path.append("./packages")
 info       # for `from natrix import info`
 taskqueue  # for `from natrix import taskqueue`
 
-__version__ = "0.0.9"
+__version__ = "0.0.9+"
 
 
 # Core classes
 class Request(object):
     " Abstraction for an HTTP request "
     def __init__(self, environ):
-        self.method = environ["REQUEST_METHOD"].upper()
-        self.path = environ["PATH_INFO"]
-        self.query = environ["QUERY_STRING"]
-        self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
         self.flag = None
 
+        # todo: x.request.scheme
+
+        # Field: x.request.headers
+        " Get all `HTTP_{HEADER_NAME}` environ keys "
         self.headers = {}
         for k, v in environ.iteritems():
             if k.startswith("HTTP_"):
                 name = k[5:].lower().replace("_", "-")
                 self.headers[name] = v
 
+        # Field: x.request.path
+        self.path = ensure_unicode(environ["PATH_INFO"])
+
+        # Field: x.request.query
+        self.query = ensure_unicode(environ["QUERY_STRING"])
+
+        # Field: x.request.params
+        self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
+
         content_type = environ.get("HTTP_CONTENT_TYPE", "")
         content_type = content_type or environ.get("CONTENT_TYPE", "")
-
         if "wsgi.input" in environ:
             if content_type.startswith("multipart/form-data"):
                 form = FieldStorage(fp=environ["wsgi.input"], environ=environ)
@@ -60,7 +68,9 @@ class Request(object):
                                      keep_blank_values=1)
                 self.params.update(self.POST)
 
-        # allow custom method
+        # Field: x.request.method (require: params)
+        self.method = environ["REQUEST_METHOD"].upper()
+
         if self.method == "POST" and ":method" in self.params:
             method = self.params.get(":method")
             if isinstance(method, list):
@@ -68,6 +78,7 @@ class Request(object):
             else:
                 self.method = method.upper()
 
+        # Field: x.request.cookies
         cookie = Cookie.SimpleCookie()
         for c in environ.get("HTTP_COOKIE", "").split(";"):
             try:
@@ -76,33 +87,32 @@ class Request(object):
                 info("Invalid cookie: %s" % c)
         self.cookies = dict(cookie.items())
 
-        # is x-requested-with header present and equal to ``xmlhttprequest``?
-        # note: this isn't set by every xmlhttprequest request, it is only set
-        # if you are using a javascript library that sets it (or you set the
-        # header yourself manually).
-        # currently prototype and jquery are known to set this header.
+        # Field: x.request.is_xhr
         if environ.get("HTTP_X_REQUESTED_WITH", "") == "XMLHttpRequest":
             self.is_xhr = True
         else:
             self.is_xhr = False
 
+        # Field: x.request.remote_addr
         self.remote_addr = environ.get("REMOTE_ADDR", None)
 
-        self.host = environ.get("HTTP_HOST", "")
-        self.domain = self.host.split(":", 1)[0]
+        # Field: x.request.host
+        self.host = ensure_unicode(environ.get("HTTP_HOST", ""))
 
-        # idea: x.request.scheme
+        # Field: x.request.domain (require: host)
+        self.domain = ensure_unicode(self.host.split(":", 1)[0])
+
+        # Field: x.request.path_url (require: host, path)
         self.path_url = "http://%s%s" % (self.host, self.path)
+
+        # Field: x.request.url (require: host, path, query)
         self.url = self.host + self.path
+
         if self.query:
             self.url += "?" + self.query
 
-        # unicode
-        self.host = ensure_unicode(self.host)
-        self.path = ensure_unicode(self.path)
-        self.domain = ensure_unicode(self.domain)
         self.url = ensure_unicode(self.url)
-        self.query = ensure_unicode(self.query)
+        # endfold
 
     def __getitem__(self, name):
         " Example: self.request[:name] "
