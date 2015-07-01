@@ -29,9 +29,7 @@ class Request(object):
     def __init__(self, environ):
         self.flag = None
 
-        # todo: x.request.scheme
-
-        # Field: x.request.headers
+        # Field: headers
         " Get all `HTTP_{HEADER_NAME}` environ keys "
         self.headers = {}
         for k, v in environ.iteritems():
@@ -39,13 +37,7 @@ class Request(object):
                 name = k[5:].lower().replace("_", "-")
                 self.headers[name] = v
 
-        # Field: x.request.path
-        self.path = ensure_unicode(environ["PATH_INFO"])
-
-        # Field: x.request.query
-        self.query = ensure_unicode(environ["QUERY_STRING"])
-
-        # Field: x.request.params
+        # Field: params
         self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
 
         content_type = environ.get("HTTP_CONTENT_TYPE", "")
@@ -68,7 +60,7 @@ class Request(object):
                                      keep_blank_values=1)
                 self.params.update(self.POST)
 
-        # Field: x.request.method (require: params)
+        # Field: method
         self.method = environ["REQUEST_METHOD"].upper()
 
         if self.method == "POST" and ":method" in self.params:
@@ -78,7 +70,7 @@ class Request(object):
             else:
                 self.method = method.upper()
 
-        # Field: x.request.cookies
+        # Field: cookies
         cookie = Cookie.SimpleCookie()
         for c in environ.get("HTTP_COOKIE", "").split(";"):
             try:
@@ -87,31 +79,45 @@ class Request(object):
                 info("Invalid cookie: %s" % c)
         self.cookies = dict(cookie.items())
 
-        # Field: x.request.is_xhr
+        # Field: is_xhr
         if environ.get("HTTP_X_REQUESTED_WITH", "") == "XMLHttpRequest":
             self.is_xhr = True
         else:
             self.is_xhr = False
 
-        # Field: x.request.remote_addr
+        # Field: remote_addr
         self.remote_addr = environ.get("REMOTE_ADDR", None)
+        # endfold
 
-        # Field: x.request.host
+        " Example: http://foo.example.com:8000/path/page.html?x=y&z "
+        # Field: scheme    | http
+        self.scheme = environ.get("wsgi.url_scheme", "http")
+
+        # Field: host      | foo.example.com:8000
         self.host = ensure_unicode(environ.get("HTTP_HOST", ""))
 
-        # Field: x.request.domain (require: host)
+        # Field: domain    | foo.example.com
         self.domain = ensure_unicode(self.host.split(":", 1)[0])
 
-        # Field: x.request.path_url (require: host, path)
-        self.path_url = "http://%s%s" % (self.host, self.path)
+        # Field: port      | 8000
+        if ":" in self.host:
+            self.port = int(self.host.split(":")[1])
+        else:
+            self.port = 80
 
-        # Field: x.request.url (require: host, path, query)
-        self.url = self.host + self.path
+        # Field: path      | /path/page.html
+        self.path = ensure_unicode(environ["PATH_INFO"])
 
+        # Field: query     | x=y&z
+        self.query = ensure_unicode(environ["QUERY_STRING"])
+
+        # Field: path_url  | http://foo.example.com:8000/path/page.html
+        self.path_url = u"%s://%s%s" % (self.scheme, self.host, self.path)
+
+        # Field: url       | http://foo.example.com:8000/path/page.html?x=y&z
+        self.url = self.path_url
         if self.query:
-            self.url += "?" + self.query
-
-        self.url = ensure_unicode(self.url)
+            self.url = self.path_url + u"?" + self.query
         # endfold
 
     def __getitem__(self, name):
