@@ -124,8 +124,6 @@ class Response(object):
     def __init__(self, code=None):
         self.code = code or 200
         self.body = ""
-
-        # Default headers
         self.headers = {
             "Content-Type": "text/plain; charset=utf-8",
         }
@@ -457,7 +455,7 @@ class Application(object):
 
             return handler
 
-        # Usage: route("/route-to-url", "controller.path")
+        # usage: route("/route-to-url", "controller.path")
         if handler_path:  # controller path to function
             module_name, handler_name = handler_path.split(".")
             module = importlib.import_module("controllers.%s" % module_name)
@@ -544,6 +542,13 @@ class Application(object):
         return _internal_error
 
     def include(self, controller):
+        """ Usage:
+
+            from natrix import app
+
+            # initialize `general` controller's routes
+            app.include("general")
+        """
         __import__("controllers.%s" % controller)
 
 
@@ -631,15 +636,16 @@ def cookie_signature(key, value, timestamp):
 def ensure_unicode(string):
     if isinstance(string, str):
         try:
-            string = string.decode("utf")
+            string = string.decode("utf-8")
         except UnicodeDecodeError:
-            pass
+            string = string.decode("unicode-escape")
+
     return string
 
 
 def ensure_ascii(string):
     if isinstance(string, unicode):
-        string = string.encode("utf")
+        string = string.encode("utf-8")
     return string
 
 

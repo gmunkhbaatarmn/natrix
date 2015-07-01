@@ -58,10 +58,11 @@ def test_Request():
     eq(request.method, "POST")
 
     # unicode
-    environ["PATH_INFO"] = "/\xf4\xee"
+    environ["PATH_INFO"] = "/\xff"
     environ["REQUEST_METHOD"] = "POST"
     request = natrix.Request(environ)
     eq(request.method, "POST")
+    eq(request.path, u"/\xff")
 
 
 def test_Request_headers():
@@ -279,7 +280,7 @@ def test_Handler_request():
 
     response = testapp.get("/?hello=%E3")
     eq(response.status_int, 200)
-    eq(response.normal_body, "\xe3")
+    eq(response.normal_body, "\xc3\xa3")
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/?hello=юникод")
@@ -620,6 +621,13 @@ def test_route_shortcut():
 
     response = testapp.get("/123/abcd", status=404)
     eq(response.status_int, 404)
+
+
+# Helpers
+def test_ensure_unicode():
+    eq(natrix.ensure_unicode("\xf4\xee"), u"\xf4\xee")
+    eq(natrix.ensure_unicode("ab\xf4\xee"), u"ab\xf4\xee")
+    eq(natrix.ensure_unicode("ӨҮ\xf4\xee"), u"\xd3\xa8\xd2\xae\xf4\xee")
 
 
 # Services
