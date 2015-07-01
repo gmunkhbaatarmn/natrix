@@ -90,37 +90,42 @@ class Request(object):
         # endfold
 
         " Example: http://foo.example.com:8000/path/page.html?x=y&z "
-        # Field: scheme    | http
+        # Field: scheme     | http
         self.scheme = environ.get("wsgi.url_scheme", "http")
 
-        # Field: host      | foo.example.com:8000
+        # Field: host       | foo.example.com:8000
         self.host = ensure_unicode(environ.get("HTTP_HOST", ""))
 
-        # Field: domain    | foo.example.com
+        # Field: domain     | foo.example.com
         self.domain = ensure_unicode(self.host.split(":", 1)[0])
 
-        # Field: port      | 8000
+        # Field: port       | 8000
         if ":" in self.host:
             self.port = int(self.host.split(":")[1])
         else:
             self.port = 80
 
-        # Field: path      | /path/page.html
-        self.path = ensure_unicode(environ["PATH_INFO"])
-
-        # Field: query     | x=y&z
+        # Field: query      | x=y&z
         self.query = ensure_unicode(environ["QUERY_STRING"])
 
-        # Field: host_url  | http://foo.example.com:8000/
+        # Field: path       | /path/page.html
+        self.path = ensure_unicode(environ["PATH_INFO"])
+
+        # Field: path_query | /path=page.html?x=y&z
+        self.path_query = self.path
+        if self.query:
+            self.path_query += "?%s" % self.query
+
+        # Field: host_url   | http://foo.example.com:8000/
         self.host_url = u"%s://%s/" % (self.scheme, self.host)
 
-        # Field: path_url  | http://foo.example.com:8000/path/page.html
+        # Field: path_url   | http://foo.example.com:8000/path/page.html
         self.path_url = u"%s://%s%s" % (self.scheme, self.host, self.path)
 
-        # Field: url       | http://foo.example.com:8000/path/page.html?x=y&z
+        # Field: url        | http://foo.example.com:8000/path/page.html?x=y&z
         self.url = self.path_url
         if self.query:
-            self.url = self.path_url + u"?" + self.query
+            self.url += "?%s" % self.query
         # endfold
 
     def __getitem__(self, name):
@@ -307,8 +312,7 @@ class Handler(object):
 
     def redirect(self, url=None, permanent=False, code=302, delay=0):
         if not url:
-            # idea: also support path with query
-            url = self.request.path
+            url = self.request.path_query
 
         if permanent:
             code = 301
