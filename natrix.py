@@ -20,7 +20,7 @@ sys.path.append("./packages")
 info       # for `from natrix import info`
 taskqueue  # for `from natrix import taskqueue`
 
-__version__ = "0.0.9+"
+__version__ = "0.1.0"
 
 
 # Core classes
