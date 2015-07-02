@@ -404,44 +404,35 @@ class Application(object):
                     continue
 
                 x = Handler(request, response, self.config)
-                try:
-                    before_handler(x)
-                except response.Sent:
-                    pass
+
+                self._handler_call(before_handler, x, args=[])
 
                 x._save_session()
                 request = x.request
                 response = x.response
 
                 if response.body or response.code != 200:
+                    # response headers must be str not unicode
+                    for k in response.headers:
+                        response.headers[k] = ensure_ascii(response.headers[k])
                     start_response(response.status, response.headers.items())
                     return [response.body]
+            # endfold
 
-            # Handler
             x = Handler(request, response, self.config)
-            x.not_found = self.get_error_404()
-            x.internal_error = self.get_error_500()
+            x.not_found = self.get_error_404()  # for x.abort()
 
             handler, args = self.get_handler(request.path, request.method)
             if handler:
-                try:
-                    handler(x, *args)
-                except Response.Sent404:
-                    not_found = self.get_error_404()
-                    x.response.code = 404
-                    try:
-                        not_found(x)
-                    except response.Sent:
-                        pass
-                    response = x.response
-                except Response.Sent:
-                    pass
+                # Handler
+                self._handler_call(handler, x, args)
 
                 x._save_session()
                 request = x.request
                 response = x.response
-            # Not found
+                # endfold
             else:
+                # Not found
                 not_found = self.get_error_404()
                 x.response.code = 404
                 try:
@@ -449,8 +440,9 @@ class Application(object):
                 except response.Sent:
                     pass
                 response = x.response
-            # endfold
+                # endfold
         except Exception as ex:
+            # Exception
             x = Handler(request, response, self.config)
             x.exception = ex
             x.response.code = 500
@@ -468,12 +460,14 @@ class Application(object):
                 internal_error(x)
             except response.Sent:
                 pass
+
+            request = x.request
             response = x.response
+            # endfold
 
         # response headers must be str not unicode
         for k in response.headers:
             response.headers[k] = ensure_ascii(response.headers[k])
-
         start_response(response.status, response.headers.items())
         return [response.body]
 
@@ -553,6 +547,19 @@ class Application(object):
 
         return _internal_error
     # endfold
+
+    def _handler_call(self, handler, x, args):
+        try:
+            handler(x, *args)
+        except x.response.Sent:
+            pass
+        except x.response.Sent404:
+            not_found = self.get_error_404()
+            x.response.code = 404
+            try:
+                not_found(x)
+            except x.response.Sent:
+                pass
 
     def route(self, route, handler_path=None, order=0):
         """ Initialize and add route
