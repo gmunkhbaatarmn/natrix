@@ -562,11 +562,17 @@ class Application(object):
     def route(self, route, handler_path=None, order=0):
         """ Initialize and add route
 
-        Usage 1: Decorator method
-        >> @route("/")(handler)
+            Usage 1. Decorator method
+            _________________________
 
-        Usage 2: Includer method
-        >> route("/", "path.handler")
+        >>> @route("/")
+        >>> def handler(x):
+        >>>     x.response("Hello")
+
+            Usage 2. Includer method
+            ________________________
+
+        >>> route("/", "path.handler")
         """
         # 1. Decorator
         # `route("/")(handler)` <=> `func(handler)`
@@ -594,10 +600,7 @@ class Application(object):
     def include(self, controller):
         """ Usage:
 
-            from natrix import app
-
-            # initialize `general` controller's routes
-            app.include("general")
+        >>> app.include("general")
         """
         __import__("controllers.%s" % controller)
 
