@@ -343,6 +343,18 @@ class Handler(object):
             self.response.body = "Error %s" % code
 
         raise self.response.Sent
+
+    def _save_session(self):
+        if self.session == self.session.initial:
+            return
+
+        cookie = cookie_encode(self.config["session-key"], self.session)
+        cookie_value = "session=%s; path=/;" % cookie
+        self.response.headers["Set-Cookie"] = cookie_value
+
+        cookie = Cookie.SimpleCookie()
+        cookie.load(cookie_value)
+        self.request.cookies = dict(cookie.items())
     # endfold
 
     @property
@@ -386,7 +398,7 @@ class Application(object):
         response = Response()
 
         try:
-            # Route ":before"
+            # Before
             for rule, _, before_handler in self.routes:
                 if rule != ":before":
                     continue
@@ -397,27 +409,15 @@ class Application(object):
                 except response.Sent:
                     pass
 
-                # Save session if session is changed
-                if x.session != x.session.initial:
-                    session_cookie = cookie_encode(x.config["session-key"],
-                                                   x.session)
-                    cookie_value = "session=%s; path=/;" % session_cookie
-
-                    cookie = Cookie.SimpleCookie()
-                    cookie.load(cookie_value)
-                    x.request.cookies = dict(cookie.items())
-                    x.response.headers["Set-Cookie"] = cookie_value
-                # endfold
-
+                x._save_session()
                 request = x.request
                 response = x.response
 
                 if response.body or response.code != 200:
-                    start_response(response.status,
-                                   response.headers.items())
+                    start_response(response.status, response.headers.items())
                     return [response.body]
 
-            # Route handler
+            # Handler
             x = Handler(request, response, self.config)
             x.not_found = self.get_error_404()
             x.internal_error = self.get_error_500()
@@ -437,15 +437,10 @@ class Application(object):
                 except Response.Sent:
                     pass
 
-                # save session
-                if x.session != x.session.initial:
-                    cookie = cookie_encode(x.config["session-key"],
-                                           x.session)
-                    x.response.headers["Set-Cookie"] = \
-                        "session=%s; path=/;" % cookie
-
+                x._save_session()
                 request = x.request
                 response = x.response
+            # Not found
             else:
                 not_found = self.get_error_404()
                 x.response.code = 404
