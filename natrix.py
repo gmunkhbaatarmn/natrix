@@ -159,6 +159,7 @@ class Response(object):
             self.headers["Content-Type"] = "application/json"
 
         self.body += ensure_ascii("%s" % value)
+    # endfold
 
     @property
     def status(self):
@@ -232,6 +233,7 @@ class Response(object):
         }
 
         return http_status[self.code]
+    # endfold
 
     class Sent(Exception):
         " Response sent "
@@ -266,14 +268,6 @@ class Handler(object):
 
         self.session = Session(session)
 
-    @property
-    def flash(self):
-        return self.session.pop(":flash", None)
-
-    @flash.setter
-    def flash(self, value):
-        self.session[":flash"] = value
-
     def render(self, template, *args, **kwargs):
         self.response.headers["Content-Type"] = "text/html; charset=UTF-8"
         self.response.write(self.render_string(template, *args, **kwargs))
@@ -285,30 +279,44 @@ class Handler(object):
             template_path = self.config.get("template-path") or "./templates"
             loader = jinja2.FileSystemLoader(template_path)
 
-        env = jinja2.Environment(loader=loader, line_comment_prefix="#:",
+        env = jinja2.Environment(loader=loader,
+                                 line_comment_prefix="#:",
                                  extensions=["jinja2.ext.loopcontrols"])
 
-        context_dict = {
-            "json": json,
+        # default context
+        final_context = {
             "dir": dir,
             "int": int,
+            "bool": bool,
+            "float": float,
+            "reversed": reversed,
+            "sorted": sorted,
             "max": max,
             "min": min,
+
+            "json": json,
             "now": datetime.now(),
 
-            "debug": self.config.get("debug"),
             "request": self.request,
             "session": self.session,
             "flash": self.flash,
+            "config": self.config,
             "environ": os.environ,
         }
-        context_dict.update(self.config["context"](self))
-        context_dict.update(context or {})
-        context_dict.update(kwargs)
 
-        env.filters.update(context_dict)
+        # context from app.config
+        config_context = self.config["context"]
+        if callable(config_context):
+            config_context = config_context(self)
 
-        return env.get_template(template).render(context_dict)
+        final_context.update(config_context)
+        final_context.update(context or {})
+        final_context.update(kwargs)
+
+        # context functions can be jinja filter
+        env.filters.update(final_context)
+
+        return env.get_template(template).render(final_context)
 
     def redirect(self, url=None, permanent=False, code=302, delay=0):
         if not url:
@@ -335,6 +343,15 @@ class Handler(object):
             self.response.body = "Error %s" % code
 
         raise self.response.Sent
+    # endfold
+
+    @property
+    def flash(self):
+        return self.session.pop(":flash", None)
+
+    @flash.setter
+    def flash(self, value):
+        self.session[":flash"] = value
 
 
 class Application(object):
@@ -369,7 +386,7 @@ class Application(object):
         response = Response()
 
         try:
-            " before "
+            # Route ":before"
             for rule, _, before_handler in self.routes:
                 if rule != ":before":
                     continue
@@ -380,7 +397,7 @@ class Application(object):
                 except response.Sent:
                     pass
 
-                # save session
+                # Save session if session is changed
                 if x.session != x.session.initial:
                     session_cookie = cookie_encode(x.config["session-key"],
                                                    x.session)
@@ -390,6 +407,7 @@ class Application(object):
                     cookie.load(cookie_value)
                     x.request.cookies = dict(cookie.items())
                     x.response.headers["Set-Cookie"] = cookie_value
+                # endfold
 
                 request = x.request
                 response = x.response
@@ -399,7 +417,7 @@ class Application(object):
                                    response.headers.items())
                     return [response.body]
 
-            " handler "
+            # Route handler
             x = Handler(request, response, self.config)
             x.not_found = self.get_error_404()
             x.internal_error = self.get_error_500()
@@ -436,7 +454,7 @@ class Application(object):
                 except response.Sent:
                     pass
                 response = x.response
-
+            # endfold
         except Exception as ex:
             x = Handler(request, response, self.config)
             x.exception = ex
@@ -457,32 +475,12 @@ class Application(object):
                 pass
             response = x.response
 
-        # Response headers must be str not unicode
+        # response headers must be str not unicode
         for k in response.headers:
             response.headers[k] = ensure_ascii(response.headers[k])
 
         start_response(response.status, response.headers.items())
         return [response.body]
-        # threadsafe support needed
-
-    def route(self, route, handler_path=None, order=0):
-        def func(handler):
-            handler.is_controller = True
-            handler.route = route
-            self.routes.append((route, order, handler))
-            self.routes = sorted(self.routes)
-
-            return handler
-
-        # usage: route("/route-to-url", "controller.path")
-        if handler_path:  # controller path to function
-            module_name, handler_name = handler_path.split(".")
-            module = importlib.import_module("controllers.%s" % module_name)
-            handler = getattr(module, handler_name)
-
-            return func(handler)
-
-        return func
 
     def get_handler(self, request_path, request_method):
         " Returns (handler, args) or (none, none) "
@@ -559,6 +557,39 @@ class Application(object):
                 return handler
 
         return _internal_error
+    # endfold
+
+    def route(self, route, handler_path=None, order=0):
+        """ Initialize and add route
+
+        Usage 1: Decorator method
+        >> @route("/")(handler)
+
+        Usage 2: Includer method
+        >> route("/", "path.handler")
+        """
+        # 1. Decorator
+        # `route("/")(handler)` <=> `func(handler)`
+        # need to return `func`
+        if handler_path is None:
+            def func(handler):
+                self.routes += [(route, order, handler)]
+                self.routes = sorted(self.routes)
+
+                return handler
+            return func
+
+        # 2. Includer
+        # `route("/", "path.handler")`
+        controller, name = handler_path.split(".")
+        module = importlib.import_module("controllers.%s" % controller)
+        handler = getattr(module, name)
+
+        self.routes += [(route, order, handler)]
+        self.routes = sorted(self.routes)
+
+        return handler
+        # endfold
 
     def include(self, controller):
         """ Usage:
