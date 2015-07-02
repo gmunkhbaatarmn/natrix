@@ -620,6 +620,48 @@ def test_route_error():
     natrix.error = natrix_error
 
 
+def test_route_correction():
+    app = natrix.Application([
+        ("/1", lambda x: x.response("one")),
+        ("/2/", lambda x: x.response("two")),
+    ])
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/1")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "one")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/1/")
+    eq(response.location, "/1")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/1/?a=b")
+    eq(response.location, "/1?a=b")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/2/")
+    eq(response.status_int, 200)
+    eq(response.normal_body, "two")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/2")
+    eq(response.location, "/2/")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+    response = testapp.get("/2?ө=ү")
+    eq(response.location, "/2/?ө=ү")
+    eq(response.status_int, 301)
+    eq(response.normal_body, "")
+    eq(response.content_type, "text/plain")
+
+
 def test_route_shortcut():
     app = natrix.Application([
         ("/(\d+)/<int>/<string>", lambda x, _, a, b: x.response(repr([a, b]))),

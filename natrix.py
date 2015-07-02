@@ -412,11 +412,7 @@ class Application(object):
                 response = x.response
 
                 if response.body or response.code != 200:
-                    # response headers must be str not unicode
-                    for k in response.headers:
-                        response.headers[k] = ensure_ascii(response.headers[k])
-                    start_response(response.status, response.headers.items())
-                    return [response.body]
+                    raise self.DoneException
             # endfold
 
             x = Handler(request, response, self.config)
@@ -432,6 +428,40 @@ class Application(object):
                 response = x.response
                 # endfold
             else:
+                # Unhandled alternative URL support
+                # redirect "/path/" -> "/path"
+                if request.path.endswith("/"):
+                    request_path = request.path[:-1]
+                    handler, _ = self.get_handler(request_path, request.method)
+                    if handler:
+                        # redirect to request_path
+                        location = request_path
+                        if request.query:
+                            location += "?%s" % request.query
+
+                        response.headers["Location"] = location
+                        response.code = 301  # permanent
+                        response.body = ""
+
+                        raise self.DoneException
+
+                # redirect "/path"  -> "/path/"
+                if not request.path.endswith("/"):
+                    request_path = request.path + "/"
+                    handler, _ = self.get_handler(request_path, request.method)
+                    if handler:
+                        # redirect to request_path
+                        location = request_path
+                        if request.query:
+                            location += "?%s" % request.query
+
+                        response.headers["Location"] = location
+                        response.code = 301  # permanent
+                        response.body = ""
+
+                        raise self.DoneException
+                # endfold
+
                 # Not found
                 not_found = self.get_error_404()
                 x.response.code = 404
@@ -441,6 +471,8 @@ class Application(object):
                     pass
                 response = x.response
                 # endfold
+        except self.DoneException:
+            pass
         except Exception as ex:
             # Exception
             x = Handler(request, response, self.config)
@@ -470,6 +502,7 @@ class Application(object):
             response.headers[k] = ensure_ascii(response.headers[k])
         start_response(response.status, response.headers.items())
         return [response.body]
+    # endfold
 
     def get_handler(self, request_path, request_method):
         " Returns (handler, args) or (none, none) "
@@ -605,6 +638,9 @@ class Application(object):
         >>> app.include("general")
         """
         __import__("controllers.%s" % controller)
+
+    class DoneException(Exception):
+        pass
 
 
 # Helpers
