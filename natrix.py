@@ -765,6 +765,12 @@ class ModelMixin(object):
         while True:
             entity = self.__class__.get_by_id(self.id)
             for field in self.fields().keys():
+                if getattr(self.fields()[field], "auto_now", ""):
+                    continue
+
+                if getattr(self.fields()[field], "auto_now_add", ""):
+                    continue
+
                 old_value = getattr(self, field)
                 new_value = getattr(entity, field)
 
