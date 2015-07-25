@@ -748,7 +748,7 @@ class ModelMixin(object):
     # endfold
 
     def delete(self, complete=False):
-        super(Model, self).delete()
+        super(ModelMixin, self).delete()
 
         if complete is False:
             return
