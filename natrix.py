@@ -20,7 +20,7 @@ sys.path.append("./packages")
 info       # for `from natrix import info`
 taskqueue  # for `from natrix import taskqueue`
 
-__version__ = "0.1.1"
+__version__ = "0.1.1+"
 
 
 # Core classes
@@ -313,10 +313,12 @@ class Handler(object):
         final_context.update(context or {})
         final_context.update(kwargs)
 
+        env.globals.update(final_context)
+
         # context functions can be jinja filter
         env.filters.update(final_context)
 
-        return env.get_template(template).render(final_context)
+        return env.get_template(template).render()
 
     def redirect(self, url=None, permanent=False, code=302, delay=0):
         if not url:
