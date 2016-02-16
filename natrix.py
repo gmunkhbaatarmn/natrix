@@ -160,6 +160,12 @@ class Response(object):
             value = json.dumps(value)
             self.headers["Content-Type"] = "application/json"
 
+        if kwargs.get("log") == "info":
+            info(value)
+
+        if kwargs.get("log") == "warning":
+            warning(value)
+
         self.body += ensure_ascii("%s" % value)
     # endfold
 
