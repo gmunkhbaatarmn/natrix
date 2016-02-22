@@ -9,6 +9,7 @@ import hashlib
 import importlib
 import traceback
 from cgi import FieldStorage, parse_qs
+from glob import glob
 from time import sleep
 from logging import info, warning, error
 from datetime import datetime
@@ -287,6 +288,14 @@ class Handler(object):
             template_path = self.config.get("template-path") or "./templates"
             loader = jinja2.FileSystemLoader(template_path)
 
+        # plugin containing templates
+        template_paths = []
+        for p in self.config.get(":plugins", []):
+            template_paths.append("%s/templates" % p.replace(".", "/"))
+        plugins_loader = jinja2.FileSystemLoader(template_paths)
+
+        loader = jinja2.ChoiceLoader([loader, plugins_loader])
+
         env = jinja2.Environment(loader=loader,
                                  line_comment_prefix="#:",
                                  extensions=["jinja2.ext.loopcontrols"])
@@ -392,6 +401,7 @@ class Application(object):
             self.routes.append(r)
 
         self.config = config or {}  # none to dict
+        self.config[":modules"] = [p[9:-3] for p in glob("handlers/[!_]*.py")]
 
     def __call__(self, environ, start_response):
         """ Called by WSGI when a request comes in
@@ -631,10 +641,23 @@ class Application(object):
             return func
 
         # 2. Includer
-        # `route("/", "path.handler")`
-        controller, name = handler_path.split(".")
-        module = importlib.import_module("controllers.%s" % controller)
-        handler = getattr(module, name)
+        if isinstance(handler_path, basestring):
+            # `route("/", "path.to.handler:function")`
+            module_path, name = handler_path.split(":")
+
+            # app handler
+            if module_path in self.config[":modules"]:
+                importable = "handlers.%s" % module_path
+            # plugin handler
+            else:
+                importable = "%s.handlers" % module_path
+
+            module = importlib.import_module(importable)
+            handler = getattr(module, name)
+
+        else:
+            # `route("/", module.handler)`
+            handler = handler_path
 
         self.routes += [(route, order, handler)]
         self.routes = sorted(self.routes)
