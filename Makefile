@@ -1,9 +1,11 @@
 test:
-	@flake8 natrix.py tests.py
+	@flake8 --quotes '"' natrix.py
+	@flake8 --quotes '"' tests.py --ignore=N802
 	@coverage run tests.py
 	@coverage report --show-missing -m natrix.py
 	@coverage erase
 
 init:
-	@pip install flake8 coverage nose webtest
+	@pip install flake8 flake8-print flake8-quotes flake8-blind-except pep8-naming
+	@pip install coverage nose webtest
 	@pip install appengine-sdk
