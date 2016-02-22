@@ -6,6 +6,6 @@ test:
 	@coverage erase
 
 init:
-	@pip install flake8 flake8-print flake8-quotes flake8-blind-except pep8-naming
+	@pip install flake8 flake8-print flake8-quotes==0.2.2 flake8-blind-except pep8-naming
 	@pip install coverage nose webtest
 	@pip install appengine-sdk
