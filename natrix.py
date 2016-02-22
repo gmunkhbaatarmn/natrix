@@ -707,14 +707,14 @@ def cookie_decode(key, value, max_age=None):
     # Decode: must be a correct base64
     try:
         json_value = encoded_value.decode("base64")
-    except:
+    except Exception:
         warning("Incorrect base64 string: %r" % encoded_value, exc_info=True)
         return None
 
     # Decode: must be a correct json
     try:
         return json.loads(json_value)
-    except:
+    except Exception:
         warning("Incorrect json string: %r" % json_value, exc_info=True)
         return None
 
