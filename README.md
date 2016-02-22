@@ -1,3 +1,6 @@
+[![Build][build-img]][build-url]
+[![Issue][issue-img]][issue-url]
+
 # Natrix
 Natrix is a simple lightweight Python Web framework designed for
 Google App Engine.
@@ -25,3 +28,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+[build-img]: https://img.shields.io/travis/gmunkhbaatarmn/natrix.svg
+[build-url]: https://travis-ci.org/gmunkhbaatarmn/natrix
+
+[issue-img]: https://img.shields.io/github/issues/gmunkhbaatarmn/natrix.svg
+[issue-url]: https://github.com/gmunkhbaatarmn/natrix/issues
