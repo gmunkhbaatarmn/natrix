@@ -5,6 +5,7 @@ import hmac
 import json
 import jinja2
 import Cookie
+import urllib
 import hashlib
 import importlib
 import traceback
@@ -518,8 +519,10 @@ class Application(object):
             # endfold
 
         # response headers must be str not unicode
-        for k in response.headers:
-            response.headers[k] = ensure_ascii(response.headers[k])
+        for key, value in response.headers.iteritems():
+            value = ensure_ascii(value)
+            value = urllib.quote(value, safe="/;=|?")
+            response.headers[key] = value
         start_response(response.status, response.headers.items())
         return [response.body]
     # endfold

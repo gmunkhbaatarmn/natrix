@@ -1,29 +1,31 @@
 # coding: utf-8
+import re
 import nose
 import natrix
 import shutil
+import urllib
 import webtest
 import tempfile
 import dev_appserver
 from codecs import open
 from nose.tools import eq_ as eq, ok_ as ok, timed
-from google.appengine.ext.testbed import Testbed
 
 
 def setup():
+    from google.appengine.ext.testbed import Testbed
     dev_appserver.fix_sys_path()
 
-    # Create an instance of Testbed class
+    # create an instance of testbed class
     nose.testbed = Testbed()
 
-    # Activate the testbed, which prepares the services stub for use
+    # activate the testbed, which prepares the services stub for use
     nose.testbed.activate()
 
-    # Declare which stubs want to use
+    # declare which stubs want to use
     nose.testbed.init_datastore_v3_stub()
     nose.testbed.init_memcache_stub()
 
-    # Temporary directory
+    # temporary directory
     tempdir = tempfile.mkdtemp()
     open("%s/ok.html" % tempdir, "w+", "utf-8").write(
         u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
@@ -32,11 +34,33 @@ def setup():
 
 
 def teardown():
-    # Clean up temporary dir
+    # clean up temporary dir
     shutil.rmtree(nose.tempdir)
 
-    # Restores the original stubs
+    # restores the original stubs
     nose.testbed.deactivate()
+
+
+def validate_response(r, **options):
+    # Validate: status
+    assert 100 <= r.status_int
+    eq(r.status_int, options.get("status_int", 200))
+
+    # Validate: headers
+    " Ref: https://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters "
+    message = "Must be printable ASCII characters: %s"
+    for key, value in r.headers.iteritems():
+        ok(re.match("^[\x20-\x7e]*$", value), message % repr(value))
+    # endfold
+
+    eq(r.content_type, options.get("content_type", "text/plain"))
+
+    if r.status_int == 200:
+        ok("location" not in r.headers)
+
+    if r.status_int in [301, 302]:
+        eq(urllib.unquote(r.headers["location"]), options["location"])
+        eq(r.normal_body, "")
 
 
 # Core classes
@@ -127,11 +151,12 @@ def test_Response_headers():
     @app.route(":before")
     def before(x):
         x.response.headers["X-Location"] = u"юникод"
+    # endfold
 
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok2", status=404)
-    eq(response.headers["X-Location"], "юникод")
+    eq(response.headers["X-Location"], "%D1%8E%D0%BD%D0%B8%D0%BA%D0%BE%D0%B4")
     eq(response.status_int, 404)
     eq(response.content_type, "text/plain")
 
@@ -142,6 +167,7 @@ def test_Handler_render():
 
     def ok3(x):
         x.response(x.render_string("ok.html", hello="!"))
+    # endfold
 
     app = natrix.Application([
         ("/ok", lambda self: self.render("ok.html")),
@@ -152,72 +178,83 @@ def test_Handler_render():
 
     testapp = webtest.TestApp(app)
 
-    response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok</b>")
-    eq(response.content_type, "text/html")
+    # 0. /ok
+    r = testapp.get("/ok")
 
-    response = testapp.get("/ok2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok2</b>")
-    eq(response.content_type, "text/plain")
+    eq(r.normal_body, "<b>ok хорошо /ok</b>")
+    validate_response(r, content_type="text/html")
 
-    response = testapp.get("/ok3")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok3!</b>")
-    eq(response.content_type, "text/plain")
+    # 1. /ok2
+    r = testapp.get("/ok2")
+
+    eq(r.normal_body, "<b>ok хорошо /ok2</b>")
+    validate_response(r)
+
+    # 2. /ok3
+    r = testapp.get("/ok3")
+
+    eq(r.normal_body, "<b>ok хорошо /ok3!</b>")
+    validate_response(r)
+    # endfold
 
     # default context
-    app = natrix.Application([
+    app = natrix.Application(routes=[
         ("/ok", lambda self: self.render("ok.html")),
         ("/ok2", ok2),
         ("/ok3", ok3),
-    ], {
+    ], config={
         "context": {"hello": "!"},
     })
     app.config["template-path"] = nose.tempdir
     testapp = webtest.TestApp(app)
 
-    response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok!</b>")
-    eq(response.content_type, "text/html")
+    # 0. /ok
+    r = testapp.get("/ok")
 
-    response = testapp.get("/ok2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok2!</b>")
-    eq(response.content_type, "text/plain")
+    eq(r.normal_body, "<b>ok хорошо /ok!</b>")
+    validate_response(r, content_type="text/html")
 
-    response = testapp.get("/ok3")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok3!</b>")
-    eq(response.content_type, "text/plain")
+    # 1. /ok2
+    r = testapp.get("/ok2")
+
+    eq(r.normal_body, "<b>ok хорошо /ok2!</b>")
+    validate_response(r)
+
+    # 2. /ok3
+    r = testapp.get("/ok3")
+
+    eq(r.normal_body, "<b>ok хорошо /ok3!</b>")
+    validate_response(r)
+    # endfold
 
     # default context as function
-    app = natrix.Application([
+    app = natrix.Application(routes=[
         ("/ok", lambda self: self.render("ok.html")),
         ("/ok2", ok2),
         ("/ok3", ok3),
-    ], {
+    ], config={
         "context": lambda self: {"hello": self.request.path},
     })
     app.config["template-path"] = nose.tempdir
     testapp = webtest.TestApp(app)
 
-    response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok/ok</b>")
-    eq(response.content_type, "text/html")
+    # 0. /ok
+    r = testapp.get("/ok")
 
-    response = testapp.get("/ok2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok2/ok2</b>")
-    eq(response.content_type, "text/plain")
+    eq(r.normal_body, "<b>ok хорошо /ok/ok</b>")
+    validate_response(r, content_type="text/html")
 
-    response = testapp.get("/ok3")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /ok3!</b>")
-    eq(response.content_type, "text/plain")
+    # 1. /ok2
+    r = testapp.get("/ok2")
+
+    eq(r.normal_body, "<b>ok хорошо /ok2/ok2</b>")
+    validate_response(r)
+
+    # 2. /ok3
+    r = testapp.get("/ok3")
+
+    eq(r.normal_body, "<b>ok хорошо /ok3!</b>")
+    validate_response(r)
 
 
 def test_Handler_redirect():
@@ -234,56 +271,44 @@ def test_Handler_redirect():
     testapp = webtest.TestApp(app)
 
     # 0. x.redirect(/2)
-    response = testapp.get("/0")
-    eq(response.location, "/2")
-    eq(response.status_int, 302)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = testapp.get("/0")
+
+    validate_response(r, status_int=302, location="/2")
 
     # 1. x.redirect(external, delay=0.2)
-    response = timed(0.3)(lambda: testapp.get("/1"))()
-    eq(response.location, "http://github.com/")
-    eq(response.status_int, 302)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = timed(0.3)(lambda: testapp.get("/1"))()
+
+    validate_response(r, status_int=302, location="http://github.com/")
 
     # 2. x.redirect(external, code=301)
-    response = testapp.get("/2")
-    eq(response.location, "http://github.com/")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = testapp.get("/2")
+
+    validate_response(r, status_int=301, location="http://github.com/")
 
     # 3. x.redirect(external, permanent=True)
-    response = testapp.get("/3")
-    eq(response.location, "http://github.com/")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = testapp.get("/3")
+
+    validate_response(r, status_int=301, location="http://github.com/")
 
     # 4. x.redirect(external/юникод)
-    response = testapp.get("/4")
-    eq(response.location, "http://github.com/юникод")
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = testapp.get("/4")
+
+    validate_response(r, status_int=302, location="http://github.com/юникод")
 
     # 5. x.redirect(external/юникод)
-    response = testapp.get("/5")
-    eq(response.location, "http://github.com/юникод")
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = testapp.get("/5")
+
+    validate_response(r, status_int=302, location="http://github.com/юникод")
 
     # 6. x.redirect(any)
-    response = testapp.get("/6-юникод")
-    eq(response.location, "ok")
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = testapp.get("/6-юникод")
+
+    validate_response(r, status_int=302, location="ok")
 
     # 7. x.redirect()
-    response = testapp.post("/7")
-    eq(response.location, "/7")
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    r = testapp.post("/7")
+
+    validate_response(r, status_int=302, location="/7")
 
 
 def test_Handler_request():
@@ -656,7 +681,7 @@ def test_route_correction():
     eq(response.content_type, "text/plain")
 
     response = testapp.get("/2?ө=ү")
-    eq(response.location, "/2/?ө=ү")
+    eq(response.location, "/2/?%D3%A9=%D2%AF")
     eq(response.status_int, 301)
     eq(response.normal_body, "")
     eq(response.content_type, "text/plain")
