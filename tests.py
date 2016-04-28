@@ -95,6 +95,7 @@ def test_Request_headers():
     @app.route(":before")
     def before(x):
         x.response("%s" % x.request.headers["x-appengine-taskretrycount"])
+    # endfold
 
     testapp = webtest.TestApp(app)
 
@@ -399,6 +400,7 @@ def test_Handler_session():
 
     def flash_fetch(x):
         x.response(x.flash)
+    # endfold
 
     app = natrix.Application([
         ("/write", write),
@@ -434,6 +436,7 @@ def test_Handler_session_before():
     @app.route(":before")
     def before(x):
         x.session["foo"] = "bar"
+    # endfold
 
     testapp = webtest.TestApp(app)
 
@@ -462,20 +465,20 @@ def test_Handler_session_negative():
                               " 'hello': <Morsel: hello='world'>}"))
     natrix.info = natrix_info
 
-    # invalid session cookie format
+    # Invalid session cookie format
     testapp.reset()
     testapp.set_cookie("session", "hello|world")
     response = testapp.get("/1")
     eq(response.normal_body, "{}")
 
-    # session must be dict
+    # Session must be dict
     testapp.reset()
     testapp.set_cookie("session", ("IjEi|2111666111|"
                                    "4df69712d1e398d4be1cd064044a1c138fc098bc"))
     response = testapp.get("/1")
     eq(response.normal_body, "{}")
 
-    # invalid cookie signature
+    # Invalid cookie signature
     natrix_warning = natrix.warning
     natrix.warning = lambda x, **kwargs: (x, kwargs)
     testapp.reset()
@@ -495,11 +498,7 @@ def test_Handler_session_negative():
     natrix.warning = lambda x, **kwargs: (x, kwargs)
     natrix.cookie_decode("random-string", value)
     natrix.warning = natrix_warning
-
-    # testapp.set_cookie("session", ("eyIxIjogMn0=|2111666111|"
-    #                                "43d8feade6534e4acfd736baf0484b3a74d615b6"))
-    # response = testapp.get("/1")
-    # eq(response.normal_body, "{u'1': 2}")
+    # endfold
 
 
 def test_Handler_abort():
@@ -535,6 +534,7 @@ def test_Application():
     def ok4(x):
         x.response.code = 202
         x.response("OK4")
+    # endfold
 
     app = natrix.Application([
         ("/ok", lambda self: self.response("OK")),
@@ -573,6 +573,8 @@ def test_Application_exception():
 
     def _error(*args, **kwargs):
         pass
+    # endfold
+
     natrix_error = natrix.error
     natrix.error = _error
     response = testapp.get("/", status=500)
@@ -592,6 +594,7 @@ def test_route_before():
     @app.route(":before")
     def ok(x):
         x.response("BEFORE!")
+    # endfold
 
     testapp = webtest.TestApp(app)
 
@@ -608,6 +611,7 @@ def test_route_before():
     @app.route(":before")
     def ok2(x):
         x.response.headers["Content-Type"] = "text/custom"
+    # endfold
 
     testapp = webtest.TestApp(app)
 
@@ -629,6 +633,7 @@ def test_route_error():
     @app.route(":error-500")
     def error_500(x):
         x.response("Custom error 500")
+    # endfold
 
     testapp = webtest.TestApp(app)
 
@@ -637,6 +642,7 @@ def test_route_error():
 
     def _error(*args, **kwargs):
         pass
+    # endfold
 
     natrix_error = natrix.error
     natrix.error = _error
@@ -725,6 +731,7 @@ def test_Model():
     class Data(natrix.Model):
         name = natrix.db.StringProperty()
         value = natrix.db.TextProperty()
+    # endfold
 
     natrix.data.write("hello", 123)
     d = Data.find(name="hello")
@@ -753,6 +760,7 @@ def test_Model_find_or_404():
         x.response.write("Result: ")
         d = Data.find_or_404(name="earth")
         x.response(d.value)
+    # endfold
 
     app = natrix.Application([
         (":error-404", lambda x: x.response("NOT FOUND")),
@@ -784,6 +792,7 @@ def test_Model_get_or_404():
         x.response.write("Result: ")
         d = Data.get_or_404(123456789)
         x.response(d.value)
+    # endfold
 
     app = natrix.Application([
         (":error-404", lambda x: x.response("NOT FOUND")),
@@ -805,6 +814,7 @@ def test_Expando():
     class Data(natrix.Expando):
         name = natrix.db.StringProperty()
         value = natrix.db.TextProperty()
+    # endfold
 
     natrix.data.write("hello", 123)
     d = Data.find(name="hello")
@@ -837,6 +847,7 @@ def test_app():
     @natrix.route("/world2")
     def hello(x):
         x.render("ok.html")
+    # endfold
 
     response = testapp.get("/", status=404)
     eq(response.status_int, 404)
