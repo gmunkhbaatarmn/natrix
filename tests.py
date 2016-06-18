@@ -7,7 +7,6 @@ import urllib
 import webtest
 import tempfile
 import dev_appserver
-from codecs import open
 from nose.tools import eq_ as eq, ok_ as ok, timed
 
 
@@ -27,9 +26,9 @@ def setup():
 
     # temporary directory
     tempdir = tempfile.mkdtemp()
-    open("%s/ok.html" % tempdir, "w+", "utf-8").write(
+    open("%s/ok.html" % tempdir, "w+").write(natrix.ensure_ascii(
         u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
-    )
+    ))
     nose.tempdir = tempdir
 
 
