@@ -41,8 +41,12 @@ def teardown():
 
 
 def validate_response(r, **options):
-    # Validate: status
-    assert 100 <= r.status_int
+    " Validate webtest response "
+
+    # Validate: status, status_int, status_code
+    ok(r.status.startswith("%d " % r.status_int))
+    ok(r.status_int >= 100)
+    eq(r.status_int, r.status_code)
     eq(r.status_int, options.get("status_int", 200))
 
     # Validate: headers
@@ -54,12 +58,15 @@ def validate_response(r, **options):
 
     eq(r.content_type, options.get("content_type", "text/plain"))
 
+    # Validate: status: 200
     if r.status_int == 200:
         ok("location" not in r.headers)
 
+    # Validate: status: 301, 302
     if r.status_int in [301, 302]:
         eq(urllib.unquote(r.headers["location"]), options["location"])
         eq(r.normal_body, "")
+    # endfold
 
 
 # Core classes
