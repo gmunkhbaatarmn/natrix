@@ -888,3 +888,34 @@ class Data(db.Model):
 app = Application()
 route = app.route   # alias
 data = Data  # alias
+
+
+def _update():
+    " check and update "
+    url_tags = "https://api.github.com/repos/gmunkhbaatarmn/natrix/tags"
+    url_natrix = "https://github.com/gmunkhbaatarmn/natrix/raw/%s/natrix.py"
+
+    sys.stdout.write("Checking for updates...\n\n")
+
+    latest_version = json.loads(urllib.urlopen(url_tags).read())[0]["name"]
+    source_latest = urllib.urlopen(url_natrix % latest_version).read()
+    source_local = open("./natrix.py").read()
+
+    if "v" + __version__ == latest_version and source_local == source_latest:
+        sys.stdout.write("Great! Natrix is up-to-date.\n")
+        return
+
+    if "v" + __version__ == latest_version and source_local != source_latest:
+        sys.stdout.write("WARNING: Natrix is locally edited.\n")
+    else:
+        sys.stdout.write("WARNING: This is an old version of Natrix\n")
+        sys.stdout.write("  Natrix (local) version: v%s\n" % __version__)
+        sys.stdout.write("  Natrix (latest) version: %s\n\n" % latest_version)
+
+    if "y" in raw_input("Save `natrix-%s.py`? [y/n] " % latest_version):
+        sys.stdout.write("  Saved to ./natrix-%s.py\n" % latest_version)
+        open("natrix-%s.py" % latest_version, "w+").write(source_latest)
+
+
+if __name__ == "__main__":
+    _update()
