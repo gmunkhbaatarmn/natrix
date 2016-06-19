@@ -24,7 +24,7 @@ info        # for `from natrix import info`
 taskqueue   # for `from natrix import taskqueue`
 logservice  # for `from natrix import logservice`
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 # Core classes
