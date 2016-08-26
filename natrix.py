@@ -525,7 +525,7 @@ class Application(object):
         # response headers must be str not unicode
         for key, value in response.headers.iteritems():
             value = ensure_ascii(value)
-            value = urllib.quote(value, safe="/;=|?")
+            value = urllib.quote(value, safe="/:;=|?")
             response.headers[key] = value
         start_response(response.status, response.headers.items())
         return [response.body]
