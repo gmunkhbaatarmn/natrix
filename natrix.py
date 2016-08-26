@@ -18,13 +18,14 @@ from google.appengine.ext import db
 from google.appengine.api import memcache, taskqueue
 from google.appengine.api.logservice import logservice
 
+
 sys.path.append("./packages")
 
 info        # for `from natrix import info`
 taskqueue   # for `from natrix import taskqueue`
 logservice  # for `from natrix import logservice`
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 
 # Core classes
