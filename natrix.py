@@ -115,7 +115,7 @@ class Request(object):
         # Field: path       | /path/page.html
         self.path = ensure_unicode(environ["PATH_INFO"])
 
-        # Field: path_query | /path=page.html?x=y&z
+        # Field: path_query | /path/page.html?x=y&z
         self.path_query = self.path
         if self.query:
             self.path_query += "?%s" % self.query
@@ -322,10 +322,14 @@ class Handler(object):
             "environ": os.environ,
         }
 
-        # context from app.config
+        # context from app.config["context"]
         config_context = self.config["context"]
         if callable(config_context):
             config_context = config_context(self)
+
+        # context from x.request.context
+        request_context = getattr(self.request, "context", {})
+        final_context.update(request_context)
 
         final_context.update(config_context)
         final_context.update(context or {})
