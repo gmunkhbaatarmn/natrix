@@ -904,7 +904,7 @@ def _update():
 
     latest_version = json.loads(urllib.urlopen(url_tags).read())[0]["name"]
     source_latest = urllib.urlopen(url_natrix % latest_version).read()
-    source_local = open("./natrix.py").read()
+    source_local = open(__file__).read()
 
     if "v" + __version__ == latest_version and source_local == source_latest:
         sys.stdout.write("Great! Natrix is up-to-date.\n")
