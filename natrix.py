@@ -914,6 +914,9 @@ def _update():
         sys.stdout.write("  Natrix (latest) version: %s\n\n" % latest_version)
         sys.exit(1)
 
+    if "--check-only" in sys.argv:
+        return
+
     if "y" in raw_input("Save `natrix-%s.py`? [y/n] " % latest_version):
         sys.stdout.write("  Saved to ./natrix-%s.py\n" % latest_version)
         open("natrix-%s.py" % latest_version, "w+").write(source_latest)
