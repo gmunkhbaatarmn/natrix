@@ -907,10 +907,12 @@ def _update():
 
     if "v" + __version__ == latest_version and source_local != source_latest:
         sys.stdout.write("WARNING: Natrix is locally edited.\n")
+        sys.exit(1)
     else:
         sys.stdout.write("WARNING: This is an old version of Natrix\n")
         sys.stdout.write("  Natrix (local) version: v%s\n" % __version__)
         sys.stdout.write("  Natrix (latest) version: %s\n\n" % latest_version)
+        sys.exit(1)
 
     if "y" in raw_input("Save `natrix-%s.py`? [y/n] " % latest_version):
         sys.stdout.write("  Saved to ./natrix-%s.py\n" % latest_version)
