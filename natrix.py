@@ -165,10 +165,10 @@ class Response(object):
             self.headers["Content-Type"] = "application/json"
 
         if kwargs.get("log") == "info":
-            info(value)
+            info(value.strip("\n"))
 
         if kwargs.get("log") == "warning":
-            warning(value)
+            warning(value.strip("\n"))
 
         self.body += ensure_ascii("%s" % value)
     # endfold
