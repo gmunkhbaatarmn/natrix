@@ -3,8 +3,9 @@ import re
 import sys
 import hmac
 import json
-import jinja2
 import Cookie
+import jinja2
+import string
 import urllib
 import hashlib
 import importlib
@@ -526,7 +527,7 @@ class Application(object):
         # response headers must be str not unicode
         for key, value in response.headers.iteritems():
             value = ensure_ascii(value)
-            value = urllib.quote(value, safe="/:;=|?")
+            value = urllib.quote(value, safe=string.printable)
             response.headers[key] = value
         start_response(response.status, response.headers.items())
         return [response.body]
