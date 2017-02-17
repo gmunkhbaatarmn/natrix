@@ -46,8 +46,7 @@ class Request(object):
         # Field: params
         self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
 
-        content_type = environ.get("HTTP_CONTENT_TYPE", "")
-        content_type = content_type or environ.get("CONTENT_TYPE", "")
+        content_type = environ.get("HTTP_CONTENT_TYPE", "") or environ.get("CONTENT_TYPE", "")
         if "wsgi.input" in environ:
             wsgi_input = environ["wsgi.input"]
             if content_type.startswith("multipart/form-data"):
@@ -375,7 +374,7 @@ class Handler(object):
             return
 
         cookie = cookie_encode(self.config["session-key"], self.session)
-        cookie_value = "session=%s; path=/;" % cookie
+        cookie_value = "session=%s; path=/; HttpOnly" % cookie
         self.response.headers["Set-Cookie"] = cookie_value
 
         cookie = Cookie.SimpleCookie()
@@ -826,7 +825,7 @@ class ModelMixin(object):
     # endfold
 
     @classmethod
-    def find(cls, *args, **kwargs):
+    def find(cls, **kwargs):
         query = cls.all()
         for name, value in kwargs.items():
             query.filter("%s =" % name, value)
@@ -834,8 +833,8 @@ class ModelMixin(object):
         return query.get()
 
     @classmethod
-    def find_or_404(cls, *args, **kwargs):
-        entity = cls.find(*args, **kwargs)
+    def find_or_404(cls, **kwargs):
+        entity = cls.find(**kwargs)
         if not entity:
             raise Response.Sent404
         return entity
