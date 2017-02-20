@@ -1,6 +1,6 @@
 test:
-	@flake8 --inline-quotes '"' natrix.py
-	@flake8 --inline-quotes '"' tests.py --ignore=N802
+	@flake8 --max-line-length=100 --inline-quotes '"' natrix.py
+	@flake8 --max-line-length=100 --inline-quotes '"' tests.py --ignore=N802
 	@coverage run tests.py
 	@coverage report --show-missing natrix.py
 	@coverage erase
