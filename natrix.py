@@ -557,13 +557,13 @@ class Application(object):
 
             " match url "
             # has any groups
-            re_groups = re.compile('''
+            re_groups = re.compile("""
               \(        # `(` character. Marks group start
               (
                 [^\)]+  # Until ")" character
               )
               \)        # `)` character. Marks group ends
-            ''', re.VERBOSE)
+            """, re.VERBOSE)
 
             convert_rules = []
             for group in re.findall(re_groups, rule):
