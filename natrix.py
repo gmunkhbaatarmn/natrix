@@ -842,8 +842,8 @@ class ModelMixin(object):
         return entity
 
     @classmethod
-    def get_or_404(cls, id):
-        entity = cls.get_by_id(id)
+    def get_or_404(cls, id_):
+        entity = cls.get_by_id(id_)
         if not entity:
             raise Response.Sent404
         return entity
