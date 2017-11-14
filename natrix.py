@@ -316,6 +316,7 @@ class Handler(object):
             "min": min,
 
             "json": json,
+            "time": time,
             "now": datetime.now(),
 
             "request": self.request,
