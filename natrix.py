@@ -427,7 +427,7 @@ class Application(object):
 
         try:
             # Before
-            for rule, _, before_handler in self.routes:
+            for _, rule, before_handler in self.routes:
                 if rule != ":before":
                     continue
 
@@ -536,7 +536,7 @@ class Application(object):
 
     def get_handler(self, request_path, request_method):
         " Returns (handler, args) or (none, none) "
-        for rule, _, handler in self.routes:
+        for _, rule, handler in self.routes:
             rule = ensure_unicode(rule)
             rule = rule.replace("<int>", "(int:\d+)")
             rule = rule.replace("<string>", "([^/]+)")
@@ -591,7 +591,7 @@ class Application(object):
             x.response.code = 404
             x.response.body = "Error 404"
 
-        for rule, _, handler in self.routes:
+        for _, rule, handler in self.routes:
             if rule == ":error-404":
                 return handler
 
@@ -604,7 +604,7 @@ class Application(object):
             x.response.headers["Content-Type"] = "text/plain;error"
             x.response.body = "".join(lines)
 
-        for rule, _, handler in self.routes:
+        for _, rule, handler in self.routes:
             if rule == ":error-500":
                 return handler
 
@@ -624,7 +624,7 @@ class Application(object):
             except x.response.Sent:
                 pass
 
-    def route(self, route, handler_path=None, order=0):
+    def route(self, route, handler_path=None, priority=1):
         """ Initialize and add route
 
             Usage 1. Decorator method
@@ -639,19 +639,20 @@ class Application(object):
 
         >>> route("/", "path.handler")
         """
-        # 1. Decorator
-        # `route("/")(handler)` <=> `func(handler)`
-        # need to return `func`
         if handler_path is None:
+            # Usage 1. Decorator
+            # `route("/")(handler)` <=> `func(handler)`
+            # need to return `func`
             def func(handler):
-                self.routes += [(route, order, handler)]
+                self.routes += [(priority, route, handler)]
                 self.routes = sorted(self.routes)
 
                 return handler
             return func
+            # endfold
 
-        # 2. Includer
         if isinstance(handler_path, basestring):
+            # Usage 2. Includer (string)
             # `route("/", "path.to.handler:function")`
             module_path, name = handler_path.split(":")
 
@@ -664,12 +665,14 @@ class Application(object):
 
             module = importlib.import_module(importable)
             handler = getattr(module, name)
-
+            # endfold
         else:
+            # Usage 2. Includer (function)
             # `route("/", module.handler)`
             handler = handler_path
+            # endfold
 
-        self.routes += [(route, order, handler)]
+        self.routes += [(priority, route, handler)]
         self.routes = sorted(self.routes)
 
         return handler
