@@ -300,6 +300,7 @@ class Handler(object):
 
         env = jinja2.Environment(loader=loader,
                                  line_comment_prefix="#:",
+                                 autoescape=self.config.get("jinja:autoescape", False),
                                  extensions=["jinja2.ext.loopcontrols"])
 
         # default context
