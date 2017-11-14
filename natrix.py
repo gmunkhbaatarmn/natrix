@@ -308,6 +308,7 @@ class Handler(object):
             "int": int,
             "bool": bool,
             "float": float,
+            "list": list,
             "reversed": reversed,
             "sorted": sorted,
             "max": max,
