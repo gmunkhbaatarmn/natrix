@@ -321,10 +321,11 @@ class Handler(object):
 
             "request": self.request,
             "session": self.session,
-            "flash": self.flash,
             "config": self.config,
             "environ": os.environ,
         }
+        if kwargs.get("use_flash", True):
+            final_context["flash"] = self.flash
 
         # context from app.config["context"]
         config_context = self.config["context"]
