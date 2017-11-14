@@ -405,7 +405,7 @@ class Application(object):
         self.routes = []
         for r in (routes or []):
             if len(r) == 2:
-                r = (r[0], 0, r[1])
+                r = (0, r[0], r[1])
             self.routes.append(r)
 
         self.config = config or {}  # none to dict
@@ -639,17 +639,17 @@ class Application(object):
 
         >>> route("/", "path.handler")
         """
+        # Usage 1. Decorator
+        # `route("/")(handler)` <=> `func(handler)`
+        # need to return `func`
         if handler_path is None:
-            # Usage 1. Decorator
-            # `route("/")(handler)` <=> `func(handler)`
-            # need to return `func`
             def func(handler):
                 self.routes += [(priority, route, handler)]
                 self.routes = sorted(self.routes)
 
                 return handler
             return func
-            # endfold
+        # endfold
 
         if isinstance(handler_path, basestring):
             # Usage 2. Includer (string)
