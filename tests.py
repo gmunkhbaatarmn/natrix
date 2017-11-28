@@ -26,9 +26,8 @@ def setup():
 
     # temporary directory
     tempdir = tempfile.mkdtemp()
-    open("%s/ok.html" % tempdir, "w+").write(natrix.ensure_ascii(
-        u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
-    ))
+    content = u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
+    open("%s/ok.html" % tempdir, "w+").write(natrix.ensure_ascii(content))
     nose.tempdir = tempdir
 
 
