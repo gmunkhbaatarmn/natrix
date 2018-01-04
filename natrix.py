@@ -28,6 +28,7 @@ taskqueue   # for `from natrix import taskqueue`
 logservice  # for `from natrix import logservice`
 
 __version__ = "0.1.6"
+METHOD_RE = "[a-z-]+"
 
 
 # Core classes
@@ -549,7 +550,7 @@ class Application(object):
                 rule = rule.replace(k, v)
 
             " route method. route rule: /path/to#method "
-            if re.search("#[a-z-]+$", rule):
+            if re.search("#%s$" % METHOD_RE, rule):
                 rule, method = rule.rsplit("#", 1)
                 method = method.upper()
             else:
