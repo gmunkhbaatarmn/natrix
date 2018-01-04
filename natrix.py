@@ -35,8 +35,6 @@ METHOD_RE = "[a-z-]+"
 class Request(object):
     " Abstraction for an HTTP request "
     def __init__(self, environ):
-        self.flag = None
-
         # Field: headers
         " Get all `HTTP_{HEADER_NAME}` environ keys "
         self.headers = {}
@@ -834,8 +832,12 @@ class ModelMixin(object):
     # endfold
 
     @classmethod
-    def find(cls, **kwargs):
+    def find(cls, order_by="", **kwargs):
         query = cls.all()
+
+        if order_by:
+            query.order(order_by)
+
         for name, value in kwargs.items():
             query.filter("%s =" % name, value)
 
