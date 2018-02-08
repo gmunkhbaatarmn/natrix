@@ -527,6 +527,10 @@ class Application(object):
             response = x.response
             # endfold
 
+        # special method support
+        if request.method == "HEAD":
+            response.body = ""
+
         # response headers must be str not unicode
         for key, value in response.headers.iteritems():
             value = ensure_ascii(value)
@@ -555,7 +559,8 @@ class Application(object):
                 method = "GET"  # default method
 
             " match method "
-            if method != request_method:
+            method_choices = ["GET", "HEAD"] if method == "GET" else [method]
+            if request_method not in method_choices:
                 # method not allowed
                 continue
 
