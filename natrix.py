@@ -510,11 +510,11 @@ class Application(object):
             x.response.code = 500
 
             # logging to console
-            message = ("Error occured. %s Params:\n"
+            message = ("Error occured. %s %s Params:\n"
                        "---------------------------------------------------\n"
                        "%s\n"
                        "===================================================\n")
-            error(message % (x.request.url, str(request.params)[:3000]),
+            error(message % (x.request.method, x.request.url, str(request.params)[:3000]),
                   exc_info=True)
 
             internal_error = self.get_error_500()
