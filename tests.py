@@ -1,6 +1,5 @@
 # coding: utf-8
 import re
-import os
 import time
 import pytest
 import natrix
@@ -14,23 +13,15 @@ import dev_appserver
 def setup():
     dev_appserver.fix_sys_path()
 
-    # temporary directory
-    tempdir = tempfile.gettempdir()
-    tempfile.tempdir = "/tmp/tempTEST"
-    os.system("mkdir /tmp/tempTEST")
-    content = u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
-    open("%s/ok.html" % tempdir, "w+").write(natrix.ensure_ascii(content))
-
-
-def teardown():
-    tempdir = tempfile.gettempdir()
-    shutil.rmtree(tempdir)
-
 
 @pytest.fixture
 def tempdir():
-    tempdir = tempfile.gettempdir()
-    return tempdir
+    tempdir = tempfile.mkdtemp()
+    content = u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
+    open("%s/ok.html" % tempdir, "w+").write(natrix.ensure_ascii(content))
+    yield tempdir
+
+    shutil.rmtree(tempdir)
 
 
 @pytest.fixture
