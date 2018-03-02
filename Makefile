@@ -9,5 +9,5 @@ init:
 	@pip install flake8
 	@pip install flake8-print flake8-quotes flake8-blind-except pep8-naming
 	@pip install flake8-builtins flake8-commas flake8-comprehensions
-	@pip install coverage nose webtest
+	@pip install coverage pytest webtest
 	@pip install appengine-sdk jinja2 pyyaml

@@ -1,70 +1,81 @@
 # coding: utf-8
 import re
-import nose
+import os
+import time
+import pytest
 import natrix
 import shutil
 import urllib
 import webtest
 import tempfile
 import dev_appserver
-from nose.tools import eq_ as eq, ok_ as ok, timed
 
 
 def setup():
-    from google.appengine.ext.testbed import Testbed
     dev_appserver.fix_sys_path()
 
-    # create an instance of testbed class
-    nose.testbed = Testbed()
-
-    # activate the testbed, which prepares the services stub for use
-    nose.testbed.activate()
-
-    # declare which stubs want to use
-    nose.testbed.init_datastore_v3_stub()
-    nose.testbed.init_memcache_stub()
-
     # temporary directory
-    tempdir = tempfile.mkdtemp()
+    tempdir = tempfile.gettempdir()
+    tempfile.tempdir = "/tmp/tempTEST"
+    os.system("mkdir /tmp/tempTEST")
     content = u"<b>ok хорошо {{ request.path }} {{- hello }}</b>\n"
     open("%s/ok.html" % tempdir, "w+").write(natrix.ensure_ascii(content))
-    nose.tempdir = tempdir
 
 
 def teardown():
-    # clean up temporary dir
-    shutil.rmtree(nose.tempdir)
+    tempdir = tempfile.gettempdir()
+    shutil.rmtree(tempdir)
 
-    # restores the original stubs
-    nose.testbed.deactivate()
+
+@pytest.fixture
+def tempdir():
+    tempdir = tempfile.gettempdir()
+    return tempdir
+
+
+@pytest.fixture
+def testbed():
+    from google.appengine.ext.testbed import Testbed
+
+    # create an instance of testbed class
+    testbed = Testbed()
+
+    # activate the testbed, which prepares the services stub for use
+    testbed.activate()
+
+    # declare which stubs want to use
+    testbed.init_datastore_v3_stub()
+    testbed.init_memcache_stub()
+
+    return testbed
 
 
 def validate_response(r, **options):
     " Validate webtest response "
 
     # Validate: status, status_int, status_code
-    ok(r.status.startswith("%d " % r.status_int))
-    ok(r.status_int >= 100)
-    eq(r.status_int, r.status_code)
-    eq(r.status_int, options.get("status_int", 200))
+    assert r.status.startswith("%d " % r.status_int)
+    assert r.status_int >= 100
+    assert r.status_int == r.status_code
+    assert r.status_int == options.get("status_int", 200)
 
     # Validate: headers
     " Ref: https://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters "
     message = "Must be printable ASCII characters: %s"
     for key, value in r.headers.iteritems():
-        ok(re.match("^[\x20-\x7e]*$", value), message % repr(value))
+        assert re.match("^[\x20-\x7e]*$", value), message % repr(value)
     # endfold
 
-    eq(r.content_type, options.get("content_type", "text/plain"))
+    assert r.content_type == options.get("content_type", "text/plain")
 
     # Validate: status: 200
     if r.status_int == 200:
-        ok("location" not in r.headers)
+        assert "location" not in r.headers
 
     # Validate: status: 301, 302
     if r.status_int in [301, 302]:
-        eq(urllib.unquote(r.headers["location"]), options["location"])
-        eq(r.normal_body, "")
+        assert urllib.unquote(r.headers["location"]) == options["location"]
+        assert r.normal_body == ""
     # endfold
 
 
@@ -77,21 +88,21 @@ def test_Request():
         "QUERY_STRING": "",
     }
     request = natrix.Request(environ)
-    eq(request.method, "GET")
-    eq(request.path, "/")
+    assert request.method == "GET"
+    assert request.path == "/"
 
     # more cases
     environ["PATH_INFO"] = "/test"
     environ["REQUEST_METHOD"] = "POST"
     request = natrix.Request(environ)
-    eq(request.method, "POST")
+    assert request.method == "POST"
 
     # unicode
     environ["PATH_INFO"] = "/\xff"
     environ["REQUEST_METHOD"] = "POST"
     request = natrix.Request(environ)
-    eq(request.method, "POST")
-    eq(request.path, u"/\xff")
+    assert request.method == "POST"
+    assert request.path == u"/\xff"
 
 
 def test_Request_headers():
@@ -107,33 +118,33 @@ def test_Request_headers():
     response = testapp.get("/ok2", headers={
         "X-AppEngine-TaskRetryCount": "hello world",
     })
-    eq(response.status_int, 200)
-    eq(response.body, "hello world")
+    assert response.status_int == 200
+    assert response.body == "hello world"
 
 
 def test_Response():
     " Tests `natrix.Response` class individually "
     # Response defaults
     response = natrix.Response()
-    eq(response.code, 200)
-    eq(response.headers, {"Content-Type": "text/plain; charset=utf-8"})
+    assert response.code == 200
+    assert response.headers == {"Content-Type": "text/plain; charset=utf-8"}
 
     # Response.status (status line)
-    eq(natrix.Response(code=200).status, "200 OK")
-    eq(natrix.Response(code=201).status, "201 Created")
-    eq(natrix.Response(code=202).status, "202 Accepted")
-    eq(natrix.Response(code=301).status, "301 Moved Permanently")
-    eq(natrix.Response(code=302).status, "302 Found")
-    eq(natrix.Response(code=404).status, "404 Not Found")
+    assert natrix.Response(code=200).status == "200 OK"
+    assert natrix.Response(code=201).status == "201 Created"
+    assert natrix.Response(code=202).status == "202 Accepted"
+    assert natrix.Response(code=301).status == "301 Moved Permanently"
+    assert natrix.Response(code=302).status == "302 Found"
+    assert natrix.Response(code=404).status == "404 Not Found"
 
     # Response.write
     response = natrix.Response()
     response.write("Hello")
-    eq(response.body, "Hello")
+    assert response.body == "Hello"
 
     response = natrix.Response()
     response.write([1, 2], encode="json")
-    eq(response.body, "[1, 2]")
+    assert response.body == "[1, 2]"
 
     # Response(...)
     response = natrix.Response()
@@ -141,14 +152,14 @@ def test_Response():
         response("Hello")
     except response.Sent:
         pass
-    eq(response.body, "Hello")
+    assert response.body == "Hello"
 
     response = natrix.Response()
     try:
         response("Hello")
     except response.Sent:
         pass
-    eq(response.body, "Hello")
+    assert response.body == "Hello"
 
 
 def test_Response_headers():
@@ -162,12 +173,12 @@ def test_Response_headers():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok2", status=404)
-    eq(response.headers["X-Location"], "%D1%8E%D0%BD%D0%B8%D0%BA%D0%BE%D0%B4")
-    eq(response.status_int, 404)
-    eq(response.content_type, "text/plain")
+    assert response.headers["X-Location"] == "%D1%8E%D0%BD%D0%B8%D0%BA%D0%BE%D0%B4"
+    assert response.status_int == 404
+    assert response.content_type == "text/plain"
 
 
-def test_Handler_render():
+def test_Handler_render(tempdir):
     def ok2(x):
         x.response(x.render_string("ok.html"))
 
@@ -180,26 +191,26 @@ def test_Handler_render():
         ("/ok2", ok2),
         ("/ok3", ok3),
     ])
-    app.config["template-path"] = nose.tempdir
+    app.config["template-path"] = tempdir
 
     testapp = webtest.TestApp(app)
 
     # 0. /ok
     r = testapp.get("/ok")
 
-    eq(r.normal_body, "<b>ok хорошо /ok</b>")
+    assert r.normal_body == "<b>ok хорошо /ok</b>"
     validate_response(r, content_type="text/html")
 
     # 1. /ok2
     r = testapp.get("/ok2")
 
-    eq(r.normal_body, "<b>ok хорошо /ok2</b>")
+    assert r.normal_body == "<b>ok хорошо /ok2</b>"
     validate_response(r)
 
     # 2. /ok3
     r = testapp.get("/ok3")
 
-    eq(r.normal_body, "<b>ok хорошо /ok3!</b>")
+    assert r.normal_body == "<b>ok хорошо /ok3!</b>"
     validate_response(r)
     # endfold
 
@@ -211,25 +222,25 @@ def test_Handler_render():
     ], config={
         "context": {"hello": "!"},
     })
-    app.config["template-path"] = nose.tempdir
+    app.config["template-path"] = tempdir
     testapp = webtest.TestApp(app)
 
     # 0. /ok
     r = testapp.get("/ok")
 
-    eq(r.normal_body, "<b>ok хорошо /ok!</b>")
+    assert r.normal_body == "<b>ok хорошо /ok!</b>"
     validate_response(r, content_type="text/html")
 
     # 1. /ok2
     r = testapp.get("/ok2")
 
-    eq(r.normal_body, "<b>ok хорошо /ok2!</b>")
+    assert r.normal_body == "<b>ok хорошо /ok2!</b>"
     validate_response(r)
 
     # 2. /ok3
     r = testapp.get("/ok3")
 
-    eq(r.normal_body, "<b>ok хорошо /ok3!</b>")
+    assert r.normal_body == "<b>ok хорошо /ok3!</b>"
     validate_response(r)
     # endfold
 
@@ -241,25 +252,25 @@ def test_Handler_render():
     ], config={
         "context": lambda self: {"hello": self.request.path},
     })
-    app.config["template-path"] = nose.tempdir
+    app.config["template-path"] = tempdir
     testapp = webtest.TestApp(app)
 
     # 0. /ok
     r = testapp.get("/ok")
 
-    eq(r.normal_body, "<b>ok хорошо /ok/ok</b>")
+    assert r.normal_body == "<b>ok хорошо /ok/ok</b>"
     validate_response(r, content_type="text/html")
 
     # 1. /ok2
     r = testapp.get("/ok2")
 
-    eq(r.normal_body, "<b>ok хорошо /ok2/ok2</b>")
+    assert r.normal_body == "<b>ok хорошо /ok2/ok2</b>"
     validate_response(r)
 
     # 2. /ok3
     r = testapp.get("/ok3")
 
-    eq(r.normal_body, "<b>ok хорошо /ok3!</b>")
+    assert r.normal_body == "<b>ok хорошо /ok3!</b>"
     validate_response(r)
 
 
@@ -282,7 +293,10 @@ def test_Handler_redirect():
     validate_response(r, status_int=302, location="/2")
 
     # 1. x.redirect(external, delay=0.2)
-    r = timed(0.3)(lambda: testapp.get("/1"))()
+    start_at = time.time()
+    r = testapp.get("/1")
+    time_diff = time.time() - start_at
+    assert 0.3 > time_diff
 
     validate_response(r, status_int=302, location="http://github.com/")
 
@@ -328,45 +342,45 @@ def test_Handler_request():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/%F4%EE", status=404)
-    eq(response.status_int, 404)
-    eq(response.normal_body, "Error 404")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 404
+    assert response.normal_body == "Error 404"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/?hello=%E3")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "\xc3\xa3")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "\xc3\xa3"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/?hello=юникод")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "юникод")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "юникод"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/?hello=world")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "world")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "world"
+    assert response.content_type == "text/plain"
 
     response = testapp.post("/", {"hello": "earth"})
-    eq(response.status_int, 200)
-    eq(response.normal_body, "post: earth")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "post: earth"
+    assert response.content_type == "text/plain"
 
     response = testapp.post("/method", {":method": "PUBLISH"})
-    eq(response.status_int, 200)
-    eq(response.normal_body, "PUBLISH")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "PUBLISH"
+    assert response.content_type == "text/plain"
 
     response = testapp.post("/method", {":method": "Publish"})
-    eq(response.status_int, 200)
-    eq(response.normal_body, "PUBLISH")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "PUBLISH"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/is-ajax")
-    eq(response.normal_body, "False")
+    assert response.normal_body == "False"
 
     response = testapp.get("/is-ajax", xhr=True)
-    eq(response.normal_body, "True")
+    assert response.normal_body == "True"
 
 
 def test_Handler_request_upload():
@@ -378,16 +392,16 @@ def test_Handler_request_upload():
 
     f = ("readme", "readme.md", "Lorem ipsum dolot sit amet")
     response = testapp.post("/1", {"a": "b"}, upload_files=[f])
-    eq(response.normal_body, ("FieldStorage('readme', 'readme.md')"))
+    assert response.normal_body == ("FieldStorage('readme', 'readme.md')")
 
     f = ("readme", "readme.md", "Lorem ipsum dolot sit amet")
     response = testapp.post("/1", {":method": "upload"}, upload_files=[f])
-    eq(response.normal_body, ("FieldStorage('readme', 'readme.md')"))
+    assert response.normal_body == ("FieldStorage('readme', 'readme.md')")
 
     f = ("readme", "readme.md", "Lorem ipsum dolot sit amet")
     x = ("readme", "readme.txt", "Ut enim ad minim veniam, quis nostrud")
     response = testapp.post("/1", {":method": "upload"}, upload_files=[f, x])
-    eq(response.normal_body, ("FieldStorage('readme', 'readme.md')"))
+    assert response.normal_body == ("FieldStorage('readme', 'readme.md')")
 
 
 def test_Handler_session():
@@ -418,17 +432,17 @@ def test_Handler_session():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/write")
-    eq(response.normal_body, "OK")
+    assert response.normal_body == "OK"
 
     response = testapp.get("/fetch")
-    eq(response.normal_body, "earth")
+    assert response.normal_body == "earth"
 
     response = testapp.get("/flash_write")
-    eq(response.status_int, 302)
-    eq(response.location, "/write")
+    assert response.status_int == 302
+    assert response.location == "/write"
 
     response = testapp.get("/flash_fetch")
-    eq(response.normal_body, "Foo")
+    assert response.normal_body == "Foo"
 
 
 def test_Handler_session_before():
@@ -446,7 +460,7 @@ def test_Handler_session_before():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/1")
-    eq(response.normal_body, "{u'foo': u'bar'}")
+    assert response.normal_body == "{u'foo': u'bar'}"
 
 
 def test_Handler_session_negative():
@@ -466,22 +480,22 @@ def test_Handler_session_negative():
     testapp.set_cookie("hello", "world")
     testapp.set_cookie("foo", "bar")
     response = testapp.get("/2")
-    eq(response.normal_body, ("{'foo': <Morsel: foo='bar'>,"
-                              " 'hello': <Morsel: hello='world'>}"))
+    assert response.normal_body == ("{'foo': <Morsel: foo='bar'>,"
+                                    " 'hello': <Morsel: hello='world'>}")
     natrix.info = natrix_info
 
     # Invalid session cookie format
     testapp.reset()
     testapp.set_cookie("session", "hello|world")
     response = testapp.get("/1")
-    eq(response.normal_body, "{}")
+    assert response.normal_body == "{}"
 
     # Session must be dict
     testapp.reset()
     testapp.set_cookie("session", ("IjEi|2111666111|"
                                    "4df69712d1e398d4be1cd064044a1c138fc098bc"))
     response = testapp.get("/1")
-    eq(response.normal_body, "{}")
+    assert response.normal_body == "{}"
 
     # Invalid cookie signature
     natrix_warning = natrix.warning
@@ -489,7 +503,7 @@ def test_Handler_session_negative():
     testapp.reset()
     testapp.set_cookie("session", "eyIxIjogMn0=|2111666111|wronghash")
     response = testapp.get("/1")
-    eq(response.normal_body, "{}")
+    assert response.normal_body == "{}"
     natrix.warning = natrix_warning
 
     value = "eyJhIjogImIifQ==|123|f3277d7ce8239065b34324f8d0cc472d28815f9f"
@@ -516,10 +530,10 @@ def test_Handler_abort():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/404", status=404)
-    eq(response.normal_body, "Error 404")
+    assert response.normal_body == "Error 404"
 
     response = testapp.get("/500", status=500)
-    eq(response.normal_body, "Error 500")
+    assert response.normal_body == "Error 500"
 
 
 def test_Application():
@@ -528,9 +542,9 @@ def test_Application():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/", status=404)
-    eq(response.status_int, 404)
-    eq(response.normal_body, "Error 404")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 404
+    assert response.normal_body == "Error 404"
+    assert response.content_type == "text/plain"
 
     def ok3(self):
         self.response.code = 201
@@ -550,24 +564,24 @@ def test_Application():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "OK")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "OK"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/ok2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "OK2")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "OK2"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/ok3")
-    eq(response.status_int, 201)
-    eq(response.normal_body, "OK3")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 201
+    assert response.normal_body == "OK3"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/ok4")
-    eq(response.status_int, 202)
-    eq(response.normal_body, "OK4")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 202
+    assert response.normal_body == "OK4"
+    assert response.content_type == "text/plain"
 
 
 def test_Application_exception():
@@ -583,18 +597,18 @@ def test_Application_exception():
     natrix_error = natrix.error
     natrix.error = _error
     response = testapp.get("/", status=500)
-    eq(response.status_int, 500)
-    ok(response.normal_body.startswith("Traceback (most recent call last)"))
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 500
+    assert response.normal_body.startswith("Traceback (most recent call last)")
+    assert response.content_type == "text/plain"
     natrix.error = natrix_error
 
 
-def test_route_before():
+def test_route_before(tempdir):
     # before override
     app = natrix.Application([
         ("/ok", lambda x: x.response("OK")),
     ])
-    app.config["template-path"] = nose.tempdir
+    app.config["template-path"] = tempdir
 
     @app.route(":before")
     def ok(x):
@@ -604,9 +618,9 @@ def test_route_before():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "BEFORE!")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "BEFORE!"
+    assert response.content_type == "text/plain"
 
     # before not override
     app = natrix.Application([
@@ -621,9 +635,9 @@ def test_route_before():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "OK")
-    eq(response.content_type, "text/custom")
+    assert response.status_int == 200
+    assert response.normal_body == "OK"
+    assert response.content_type == "text/custom"
 
 
 def test_route_error():
@@ -643,7 +657,7 @@ def test_route_error():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/", status=404)
-    eq(response.normal_body, "Custom error 404")
+    assert response.normal_body == "Custom error 404"
 
     def _error(*args, **kwargs):
         pass
@@ -652,7 +666,7 @@ def test_route_error():
     natrix_error = natrix.error
     natrix.error = _error
     response = testapp.get("/500", status=500)
-    eq(response.normal_body, "Custom error 500")
+    assert response.normal_body == "Custom error 500"
     natrix.error = natrix_error
 
 
@@ -664,38 +678,38 @@ def test_route_correction():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/1")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "one")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "one"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/1/")
-    eq(response.location, "/1")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    assert response.location == "/1"
+    assert response.status_int == 301
+    assert response.normal_body == ""
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/1/?a=b")
-    eq(response.location, "/1?a=b")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    assert response.location == "/1?a=b"
+    assert response.status_int == 301
+    assert response.normal_body == ""
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/2/")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "two")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 200
+    assert response.normal_body == "two"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/2")
-    eq(response.location, "/2/")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    assert response.location == "/2/"
+    assert response.status_int == 301
+    assert response.normal_body == ""
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/2?ө=ү")
-    eq(response.location, "/2/?%D3%A9=%D2%AF")
-    eq(response.status_int, 301)
-    eq(response.normal_body, "")
-    eq(response.content_type, "text/plain")
+    assert response.location == "/2/?%D3%A9=%D2%AF"
+    assert response.status_int == 301
+    assert response.normal_body == ""
+    assert response.content_type == "text/plain"
 
 
 def test_route_shortcut():
@@ -709,30 +723,30 @@ def test_route_shortcut():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/123/456/hello")
-    eq(response.normal_body, "[456, u'hello']")
+    assert response.normal_body == "[456, u'hello']"
 
     response = testapp.get("/123/abc")
-    eq(response.normal_body, "u'abc'")
+    assert response.normal_body == "u'abc'"
 
     response = testapp.get("/123/def")
-    eq(response.normal_body, "u'def'")
+    assert response.normal_body == "u'def'"
 
     response = testapp.get("/123/xyz", status=404)
-    eq(response.status_int, 404)
+    assert response.status_int == 404
 
     response = testapp.get("/123/abcd", status=404)
-    eq(response.status_int, 404)
+    assert response.status_int == 404
 
 
 # Helpers
 def test_ensure_unicode():
-    eq(natrix.ensure_unicode("\xf4\xee"), u"\xf4\xee")
-    eq(natrix.ensure_unicode("ab\xf4\xee"), u"ab\xf4\xee")
-    eq(natrix.ensure_unicode("ӨҮ\xf4\xee"), u"\xd3\xa8\xd2\xae\xf4\xee")
+    assert natrix.ensure_unicode("\xf4\xee") == u"\xf4\xee"
+    assert natrix.ensure_unicode("ab\xf4\xee") == u"ab\xf4\xee"
+    assert natrix.ensure_unicode("ӨҮ\xf4\xee") == u"\xd3\xa8\xd2\xae\xf4\xee"
 
 
 # Services
-def test_Model():
+def test_Model(testbed):
     class Data(natrix.Model):
         name = natrix.db.StringProperty()
         value = natrix.db.TextProperty()
@@ -740,12 +754,12 @@ def test_Model():
 
     natrix.data.write("hello", 123)
     d = Data.find(name="hello")
-    eq(d.id, d.key().id())
-    eq(d.name, "hello")
-    eq(d.value, "123")
+    assert d.id == d.key().id()
+    assert d.name == "hello"
+    assert d.value == "123"
 
-    eq(Data.find(name="earth"), None)
-    eq(Data.find(name="earth") or 234, 234)
+    assert Data.find(name="earth") is None
+    assert Data.find(name="earth") or 234 == 234
 
     d = Data(name="hello", value="world")
     d.save(complete=True)
@@ -775,12 +789,12 @@ def test_Model_find_or_404():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "Result: 123")
+    assert response.status_int == 200
+    assert response.normal_body == "Result: 123"
 
     response = testapp.get("/ok2", status=404)
-    eq(response.status_int, 404)
-    eq(response.normal_body, "Result: NOT FOUND")
+    assert response.status_int == 404
+    assert response.normal_body == "Result: NOT FOUND"
 
 
 def test_Model_get_or_404():
@@ -807,12 +821,12 @@ def test_Model_get_or_404():
     testapp = webtest.TestApp(app)
 
     response = testapp.get("/ok")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "Result: 123")
+    assert response.status_int == 200
+    assert response.normal_body == "Result: 123"
 
     response = testapp.get("/ok2", status=404)
-    eq(response.status_int, 404)
-    eq(response.normal_body, "Result: NOT FOUND")
+    assert response.status_int == 404
+    assert response.normal_body == "Result: NOT FOUND"
 
 
 def test_Expando():
@@ -823,28 +837,28 @@ def test_Expando():
 
     natrix.data.write("hello", 123)
     d = Data.find(name="hello")
-    eq(d.id, d.key().id())
-    eq(d.name, "hello")
-    eq(d.value, "123")
+    assert d.id == d.key().id()
+    assert d.name == "hello"
+    assert d.value == "123"
 
-    eq(Data.find(name="earth"), None)
-    eq(Data.find(name="earth") or 234, 234)
+    assert Data.find(name="earth") is None
+    assert Data.find(name="earth") or 234 == 234
 
 
 def test_data():
     natrix.data.write("hello", 123)
-    eq(natrix.data.fetch("hello"), 123)
+    assert natrix.data.fetch("hello") == 123
 
     natrix.memcache.flush_all()
-    eq(natrix.data.fetch("hello"), 123)
-    eq(natrix.data.fetch("not-found", 234), 234)
+    assert natrix.data.fetch("hello") == 123
+    assert natrix.data.fetch("not-found", 234) == 234
 
     natrix.data.erase("hello")
-    eq(natrix.data.fetch("hello"), None)
+    assert natrix.data.fetch("hello") is None
 
 
-def test_app():
-    natrix.app.config["template-path"] = nose.tempdir
+def test_app(tempdir):
+    natrix.app.config["template-path"] = tempdir
     testapp = webtest.TestApp(natrix.app)
 
     natrix.route("/world")(lambda x: x.render("ok.html"))
@@ -855,31 +869,33 @@ def test_app():
     # endfold
 
     response = testapp.get("/", status=404)
-    eq(response.status_int, 404)
-    eq(response.normal_body, "Error 404")
-    eq(response.content_type, "text/plain")
+    assert response.status_int == 404
+    assert response.normal_body == "Error 404"
+    assert response.content_type == "text/plain"
 
     response = testapp.get("/world")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /world</b>")
-    eq(response.content_type, "text/html")
+    assert response.status_int == 200
+    assert response.normal_body == "<b>ok хорошо /world</b>"
+    assert response.content_type == "text/html"
 
     response = testapp.get("/world2")
-    eq(response.status_int, 200)
-    eq(response.normal_body, "<b>ok хорошо /world2</b>")
-    eq(response.content_type, "text/html")
+    assert response.status_int == 200
+    assert response.normal_body == "<b>ok хорошо /world2</b>"
+    assert response.content_type == "text/html"
 
 
 def test_google_appengine_shortcuts():
-    ok(str(natrix.db)[9:].startswith("google.appengine.ext.db"))
-    ok(str(natrix.memcache)[9:].startswith("google.appengine.api.memcache"))
+    assert str(natrix.db)[9:].startswith("google.appengine.ext.db")
+    assert str(natrix.memcache)[9:].startswith("google.appengine.api.memcache")
 
 
 if __name__ == "__main__":
     argv = [
         __file__,       # run tests of current file
-        "--stop",       # stop on first fail
-        "--nocapture",  # `print` immediately. (useful for debugging)
-        "--quiet",      # disable dotted progress indicator
+        "-p", "no:cacheprovider",  # disable cache
+        "--quiet",                 # disable verbose report
+        "--exitfirst",             # stop/exit on first fail
+        "--capture=no",            # `print` immediately. (useful for debugging)
+        "--color=auto",            # if possible show colorful output
     ]
-    nose.main(argv=argv)
+    exit(pytest.main(argv))
