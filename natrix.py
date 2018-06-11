@@ -33,10 +33,10 @@ METHOD_RE = "[a-z-]+"
 
 # Core classes
 class Request(object):
-    " Abstraction for an HTTP request "
+    """ Abstraction for an HTTP request """
     def __init__(self, environ):
         # Field: headers
-        " Get all `HTTP_{HEADER_NAME}` environ keys "
+        """ Get all `HTTP_{HEADER_NAME}` environ keys """
         self.headers = {}
         for k, v in environ.iteritems():
             if k.startswith("HTTP_"):
@@ -134,7 +134,7 @@ class Request(object):
         # endfold
 
     def __getitem__(self, name):
-        " Usage: x.request[name] "
+        """ Usage: x.request[name] """
         value = self.params.get(name, "")
 
         # not list, individual value
@@ -145,7 +145,7 @@ class Request(object):
 
 
 class Response(object):
-    " Abstraction for an HTTP Response "
+    """ Abstraction for an HTTP Response """
     def __init__(self, code=None):
         self.code = code or 200
         self.body = ""
@@ -154,7 +154,7 @@ class Response(object):
         }
 
     def __call__(self, value, **kwargs):
-        " Shortcut method of self.write() "
+        """ Shortcut method of self.write() """
         self.write(value, **kwargs)
         raise self.Sent
 
@@ -247,10 +247,10 @@ class Response(object):
     # endfold
 
     class Sent(Exception):
-        " Response sent "
+        """ Response sent """
 
     class Sent404(Exception):
-        " Response sent "
+        """ Response sent """
 
 
 class Handler(object):
@@ -541,7 +541,7 @@ class Application(object):
     # endfold
 
     def get_handler(self, request_path, request_method):
-        " Returns (handler, args) or (none, none) "
+        """ Returns (handler, args) or (none, none) """
         for _, rule, handler in self.routes:
             rule = ensure_unicode(rule)
             rule = rule.replace("<int>", "(int:\d+)")
@@ -698,7 +698,7 @@ class Application(object):
 
 # Helpers
 class Session(dict):
-    " Customized `dict` data structure for session "
+    """ Customized `dict` data structure for session """
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
         self.initial = self.copy()
@@ -795,7 +795,7 @@ def ensure_ascii(string):
 
 # Services
 class ModelMixin(object):
-    @property
+    @property  # noqa
     def id(self):
         return self.key().id()
     # endfold
@@ -872,7 +872,7 @@ class Expando(ModelMixin, db.Expando):
 
 
 class Data(db.Model):
-    " Data.write, Data.fetch "
+    """ Data.write, Data.fetch """
     name = db.StringProperty()
     value = db.TextProperty()
 
@@ -912,7 +912,7 @@ data = Data  # alias
 
 
 def _update():
-    " check and update "
+    """ check and update """
     url_tags = "https://api.github.com/repos/gmunkhbaatarmn/natrix/tags"
     url_natrix = "https://github.com/gmunkhbaatarmn/natrix/raw/%s/natrix.py"
 

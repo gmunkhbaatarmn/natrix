@@ -42,7 +42,7 @@ def testbed():
 
 
 def validate_response(r, **options):
-    " Validate webtest response "
+    """ Validate webtest response """
 
     # Validate: status, status_int, status_code
     assert r.status.startswith("%d " % r.status_int)
@@ -72,7 +72,7 @@ def validate_response(r, **options):
 
 # Core classes
 def test_Request():
-    " Tests `natrix.Request` class individually "
+    """ Tests `natrix.Request` class individually """
     environ = {
         "PATH_INFO": "/",
         "REQUEST_METHOD": "GET",
@@ -114,7 +114,7 @@ def test_Request_headers():
 
 
 def test_Response():
-    " Tests `natrix.Response` class individually "
+    """ Tests `natrix.Response` class individually """
     # Response defaults
     response = natrix.Response()
     assert response.code == 200
@@ -396,7 +396,7 @@ def test_Handler_request_upload():
 
 
 def test_Handler_session():
-    " Tests `x.session` in controller "
+    """ Tests `x.session` in controller """
     def write(x):
         x.session["hello"] = "earth"
         x.response("OK")
@@ -437,7 +437,7 @@ def test_Handler_session():
 
 
 def test_Handler_session_before():
-    " Tests `x.session` with route(:before) "
+    """ Tests `x.session` with route(:before) """
     app = natrix.Application([
         ("/1", lambda x: x.response("%s" % x.session)),
     ])
@@ -455,7 +455,7 @@ def test_Handler_session_before():
 
 
 def test_Handler_session_negative():
-    " Tests session negative cases "
+    """ Tests session negative cases """
     app = natrix.Application([
         ("/1", lambda x: x.response("%s" % x.session)),
         ("/2", lambda x: x.response("%s" % x.request.cookies)),
@@ -512,7 +512,7 @@ def test_Handler_session_negative():
 
 
 def test_Handler_abort():
-    " Tests `x.abort` in controller "
+    """ Tests `x.abort` in controller """
     app = natrix.Application([
         ("/404", lambda x: x.abort(404)),
         ("/500", lambda x: x.abort(500)),
