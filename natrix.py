@@ -28,7 +28,7 @@ info        # for `from natrix import info`
 taskqueue   # for `from natrix import taskqueue`
 logservice  # for `from natrix import logservice`
 
-__version__ = "0.1.7+"
+__version__ = "0.1.8"
 METHOD_RE = "[a-z-]+"
 
 
