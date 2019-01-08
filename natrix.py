@@ -62,7 +62,8 @@ class Request(object):
                     else:
                         self.params[k] = field
             else:
-                params = parse_qs(wsgi_input.read(), keep_blank_values=1)
+                self.data = wsgi_input.read()
+                params = parse_qs(self.data, keep_blank_values=1)
                 self.params.update(params)
 
         # Field: method
@@ -795,7 +796,8 @@ def ensure_ascii(string):
 
 # Services
 class ModelMixin(object):
-    @property  # noqa
+    # todo: A003 id is python builtin: natrix.py
+    @property
     def id(self):
         return self.key().id()
     # endfold
