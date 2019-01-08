@@ -28,7 +28,7 @@ info        # for `from natrix import info`
 taskqueue   # for `from natrix import taskqueue`
 logservice  # for `from natrix import logservice`
 
-__version__ = "0.1.8"
+__version__ = "0.1.8+"
 METHOD_RE = "[a-z-]+"
 
 
@@ -928,16 +928,18 @@ def _update():
         sys.stdout.write("Great! Natrix is up-to-date.\n")
         return
 
+    status = 0
     if "v" + __version__ == latest_version and source_local != source_latest:
         sys.stdout.write("WARNING: Natrix is locally edited.\n")
-        sys.exit(1)
+        status = 1
     else:
         sys.stdout.write("WARNING: This is an old version of Natrix\n")
         sys.stdout.write("  Natrix (local) version: v%s\n" % __version__)
         sys.stdout.write("  Natrix (latest) version: %s\n\n" % latest_version)
-        sys.exit(1)
+        status = 1
 
     if "--check-only" in sys.argv:
+        sys.exit(status)
         return
 
     if "y" in raw_input("Save `natrix-%s.py`? [y/n] " % latest_version):
