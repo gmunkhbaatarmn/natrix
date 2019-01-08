@@ -797,7 +797,7 @@ def ensure_ascii(string):
 
 # Services
 class ModelMixin(object):
-    @property  # noqa: A003
+    @property  # noqa: A003 todo: flake8 rule A003
     def id(self):
         return self.key().id()
     # endfold
