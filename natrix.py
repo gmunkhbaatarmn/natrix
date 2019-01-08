@@ -544,7 +544,7 @@ class Application(object):
         """ Returns (handler, args) or (none, none) """
         for _, rule, handler in self.routes:
             rule = ensure_unicode(rule)
-            rule = rule.replace("<int>", "(int:\d+)")
+            rule = rule.replace("<int>", "(int:\\d+)")
             rule = rule.replace("<string>", "([^/]+)")
             shortcuts = self.config.get("route-shortcut", {})
 
@@ -567,11 +567,11 @@ class Application(object):
             " match url "
             # has any groups
             re_groups = re.compile("""
-              \(        # `(` character. Marks group start
+              \\(        # `(` character. Marks group start
               (
-                [^\)]+  # Until ")" character
+                [^\\)]+  # Until ")" character
               )
-              \)        # `)` character. Marks group ends
+              \\)        # `)` character. Marks group ends
             """, re.VERBOSE)
 
             convert_rules = []
@@ -581,7 +581,7 @@ class Application(object):
                 else:
                     convert_rules.append(lambda x: x)
 
-            rule_simple = re.sub("\([a-z]+\:", "(", rule)
+            rule_simple = re.sub("\\([a-z]+\\:", "(", rule)
             if not re.search("^%s$" % rule_simple, request_path):
                 continue
 
