@@ -705,8 +705,8 @@ def test_route_correction():
 
 def test_route_shortcut():
     app = natrix.Application([
-        ("/(\d+)/<int>/<string>", lambda x, _, a, b: x.response(repr([a, b]))),
-        ("/(\d+)/{custom}", lambda x, _, a: x.response(repr(a))),
+        ("/(\\d+)/<int>/<string>", lambda x, _, a, b: x.response(repr([a, b]))),
+        ("/(\\d+)/{custom}", lambda x, _, a: x.response(repr(a))),
     ])
     app.config["route-shortcut"] = {
         "{custom}": "(abc|def)",

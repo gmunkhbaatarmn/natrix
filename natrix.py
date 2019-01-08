@@ -796,8 +796,7 @@ def ensure_ascii(string):
 
 # Services
 class ModelMixin(object):
-    # todo: A003 id is python builtin: natrix.py
-    @property
+    @property  # noqa: A003
     def id(self):
         return self.key().id()
     # endfold
