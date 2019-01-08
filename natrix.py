@@ -1,5 +1,6 @@
 import os
 import re
+import cgi
 import sys
 import hmac
 import json
@@ -9,9 +10,9 @@ import jinja2
 import string
 import urllib
 import hashlib
+import urlparse
 import importlib
 import traceback
-from cgi import FieldStorage, parse_qs
 from glob import glob
 from time import sleep
 from logging import info, warning, error
@@ -44,13 +45,13 @@ class Request(object):
                 self.headers[name] = v
 
         # Field: params
-        self.params = parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
+        self.params = urlparse.parse_qs(environ["QUERY_STRING"], keep_blank_values=1)
 
         content_type = environ.get("HTTP_CONTENT_TYPE", "") or environ.get("CONTENT_TYPE", "")
         if "wsgi.input" in environ:
             wsgi_input = environ["wsgi.input"]
             if content_type.startswith("multipart/form-data"):
-                form = FieldStorage(fp=wsgi_input, environ=environ)
+                form = cgi.FieldStorage(fp=wsgi_input, environ=environ)
                 for k in form.keys():
                     if isinstance(form[k], list):
                         field = form[k][0]  # only first item
@@ -63,7 +64,7 @@ class Request(object):
                         self.params[k] = field
             else:
                 self.data = wsgi_input.read()
-                params = parse_qs(self.data, keep_blank_values=1)
+                params = urlparse.parse_qs(self.data, keep_blank_values=1)
                 self.params.update(params)
 
         # Field: method
