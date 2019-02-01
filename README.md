@@ -1,6 +1,7 @@
 [![Build Status][build-status-img]][build-status-url]
 [![Open issues][open-issues-img]][open-issues-url]
 [![Coverage report][coverage-report-img]][coverage-report-url]
+[![License][license-img]][license-url]
 
 # Natrix
 Natrix is a simple lightweight Python Web framework designed for
@@ -64,3 +65,5 @@ INFO     2019-01-23 04:56:07,360 admin_server.py:150] Starting admin server at: 
 [coverage-report-img]: https://coveralls.io/repos/github/gmunkhbaatarmn/natrix/badge.svg?branch=master
 [coverage-report-url]: https://coveralls.io/github/gmunkhbaatarmn/natrix?branch=master
 
+[license-img]: https://img.shields.io/github/license/gmunkhbaatarmn/natrix.svg
+[license-url]: https://github.com/gmunkhbaatarmn/natrix/blob/master/LICENSE
