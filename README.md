@@ -1,5 +1,6 @@
-[![Build][build-img]][build-url]
-[![Issue][issue-img]][issue-url]
+[![Build Status][build-status-img]][build-status-url]
+[![Open issues][open-issues-img]][open-issues-url]
+[![Coverage report][coverage-report-img]][coverage-report-url]
 
 # Natrix
 Natrix is a simple lightweight Python Web framework designed for
@@ -54,8 +55,12 @@ INFO     2019-01-23 04:56:07,357 dispatcher.py:256] Starting module "default" ru
 INFO     2019-01-23 04:56:07,360 admin_server.py:150] Starting admin server at: http://localhost:8000
 ```
 
-[build-img]: https://img.shields.io/travis/gmunkhbaatarmn/natrix.svg
-[build-url]: https://travis-ci.org/gmunkhbaatarmn/natrix
+[build-status-img]: https://img.shields.io/travis/gmunkhbaatarmn/natrix.svg
+[build-status-url]: https://travis-ci.org/gmunkhbaatarmn/natrix
 
-[issue-img]: https://img.shields.io/github/issues/gmunkhbaatarmn/natrix.svg
-[issue-url]: https://github.com/gmunkhbaatarmn/natrix/issues
+[open-issues-img]: https://img.shields.io/github/issues/gmunkhbaatarmn/natrix.svg
+[open-issues-url]: https://github.com/gmunkhbaatarmn/natrix/issues
+
+[coverage-report-img]: https://coveralls.io/repos/github/gmunkhbaatarmn/natrix/badge.svg?branch=master
+[coverage-report-url]: https://coveralls.io/github/gmunkhbaatarmn/natrix?branch=master
+
