@@ -1,0 +1,3 @@
+[report]
+include = natrix.py
+show_missing = true
