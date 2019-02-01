@@ -8,7 +8,7 @@ Natrix is a simple lightweight Python Web framework designed for
 Google App Engine.
 
 # Installing
-Copy and paste `natrix.py` on your Google App Engine project directory.
+Download [natrix.py](https://github.com/gmunkhbaatarmn/natrix/raw/v0.1.8/natrix.py) into your Google App Engine project directory.
 
 # Simple Example
 Project structure and files:
