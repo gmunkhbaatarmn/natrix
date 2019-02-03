@@ -4,29 +4,29 @@
 [![License][license-img]][license-url]
 
 # Natrix
-Natrix is a simple lightweight Python Web framework designed for
-Google App Engine.
+Natrix is a simple lightweight Python Web framework for Google App Engine. It is distributed as a single file module and has no dependencies.
 
-# Installing
-Download [natrix.py](https://github.com/gmunkhbaatarmn/natrix/raw/v0.1.8/natrix.py) into your Google App Engine project directory.
+### Example: Hello, natrix!
 
-# Simple Example
+```python
+# app.py
+from natrix import route, app
+
+@route("/")
+def home(x):
+    x.response("Hello, natrix!")
+```
+
+<details><summary>Complete details</summary>
+
+<p>
+
 Project structure and files:
 ```
 .
 ├── app.py
 ├── app.yaml
 └── natrix.py
-```
-
-```python
-# app.py
-from natrix import route, app
-
-
-@route("/")
-def home(x):
-    x.response("Hello, Natrix!")
 ```
 
 ```yaml
@@ -43,7 +43,7 @@ handlers:
   script: app.app
 
 libraries:
-- { name: jinja2,     version: "2.6"   }
+- { name: jinja2, version: "2.6" }
 ```
 
 Running:
@@ -55,6 +55,11 @@ INFO     2019-01-23 04:56:07,348 api_server.py:275] Starting API server at: http
 INFO     2019-01-23 04:56:07,357 dispatcher.py:256] Starting module "default" running at: http://localhost:8080
 INFO     2019-01-23 04:56:07,360 admin_server.py:150] Starting admin server at: http://localhost:8000
 ```
+</p></details>
+
+### Install
+Download [natrix.py](https://github.com/gmunkhbaatarmn/natrix/raw/v0.1.8/natrix.py) into your Google App Engine project directory.
+There are no hard dependencies other than the Python standard library, Google App Engine included libraries.
 
 [build-status-img]: https://img.shields.io/travis/gmunkhbaatarmn/natrix.svg
 [build-status-url]: https://travis-ci.org/gmunkhbaatarmn/natrix
