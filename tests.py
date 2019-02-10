@@ -513,6 +513,7 @@ def test_Handler_session_negative():
 
 def test_Handler_abort():
     """ Tests `x.abort` in controller """
+    # in regular handler
     app = natrix.Application([
         ("/404", lambda x: x.abort(404)),
         ("/500", lambda x: x.abort(500)),
@@ -525,6 +526,19 @@ def test_Handler_abort():
 
     response = testapp.get("/500", status=500)
     assert response.normal_body == "Error 500"
+
+    # in special route handler
+    app = natrix.Application([
+        (":before", lambda x: x.abort(404)),
+    ])
+
+    testapp = webtest.TestApp(app)
+
+    response = testapp.get("/a", status=404)
+    assert response.normal_body == "Error 404"
+
+    response = testapp.get("/b", status=404)
+    assert response.normal_body == "Error 404"
 
 
 def test_Application():

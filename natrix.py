@@ -436,6 +436,7 @@ class Application(object):
                     continue
 
                 x = Handler(request, response, self.config)
+                x.not_found = self.get_error_404()  # for x.abort()
 
                 self._handler_call(before_handler, x, args=[])
 
